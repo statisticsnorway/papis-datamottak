@@ -7,18 +7,25 @@ Created on Thu Mar 18 14:34:56 2021
 
 #import pandas as pd
 import pyffx
-import time
+#import time
+#import string
 
-def performPseudo(df, varlist, pseudoKey = 'psaudo_', delOriginal = False):
-    varAlpha = getAlphabet(df,varlist)
-    print(varAlpha)
-    pseudoFunctions = _createPseudoFunc(varAlpha)  
-    t = time.time()
+
+def performPseudo(df, varlist, pseudoKey = 'psaudo_'):
+    #varAlpha = getAlphabet(df,varlist)
+    #print(varAlpha)
+    #pseudoFunctions = _createPseudoFunc(varAlpha)  
+    #t = time.time()
     
+    pseudo = FixedAlphabet(b'secret-key')
     for var in varlist:
-        df[str('pseudo_' + var)] = df.apply(lambda x: _encrypt(x[var], var, pseudoFunctions, pseudoKey), axis=1)
+        df[str(pseudoKey + var)] = df.apply(
+            lambda x: pseudo.encrypt(x[var]), axis=1)
+    #for var in varlist:
+    #    df[str('pseudo_' + var)] = df.apply(
+    #        lambda x: _encrypt(x[var], var, pseudoFunctions, pseudoKey), axis=1)
 
-    print ("time: {}s".format(time.time()-t))
+    #print ("time: {}s".format(time.time()-t))
 
 
 def _createPseudoFunc(variablesDir):
