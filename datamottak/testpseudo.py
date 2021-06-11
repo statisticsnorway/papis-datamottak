@@ -19,5 +19,5 @@ class StringTests(unittest.TestCase):
         var = 'B'
         df2[str('pseudo_' + var)] = df2.apply(
             lambda x: pseudo.encrypt(x[var]), axis=1)
-        df2['pseudo_pseudo_B'] = df2.apply(lambda x: pseudo.decrypt(x['pseudo_B']), axis=1)
+        df2[str('pseudo_pseudo_'+ var)] = df2.apply(lambda x: pseudo.decrypt(x[str('pseudo_' + var)]), axis=1)
        
