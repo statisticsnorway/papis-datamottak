@@ -14,12 +14,13 @@ import PAPIS
 import PAPIS_pseudo
 from PAPIS_pseudo import performPseudo, del_column
 from PAPIS_readers import reader
+from PAPIS_lag_sasfil import lag_sasfil
 import logging
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
 import glob, os
-
+import re
 
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,8 @@ formatter = logging.Formatter('%(asctime)s:%(name)s:%(message)s')
 
 timestamp = datetime.now().strftime('pseudo_%H_%M_%S_%d_%m_%Y.log')
 
-LOG_FILENAME = r"/ssb/stamme01/papis/K-L-M-N-O/Nasjonale_prover/6_Logger_rapporter/"+timestamp
-
+LOG_FILENAME = r"/ssb/stamme01/papis/Oppstart/"+timestamp
+ 
 file_handler = logging.FileHandler(LOG_FILENAME)
 file_handler.setFormatter(formatter)
 
@@ -88,17 +89,17 @@ def getFilename(fileDict):
 
 filename = getPath(file) + getFilename(file)
 
+ 
 #Legger filnavn i dictionary. Ønsker at oppgitt filnavn ikke trenger å være case-sensitiv
-#file_names_dict = {}
-#def glob_files(files):
-#  for f in glob.glob(files):
-#    file_names_dict[os.path.basename(f).lower()] = os.path.basename(f)
+file_names_dict = {}
+def glob_files(files):
+  for f in glob.glob(files):
+    file_names_dict[os.path.basename(f).lower()] = f
 
-#glob_files(os.path.dirname(filename)+'//*.csv')
-#glob_files(os.path.dirname(filename)+'//*.sas7bdat')
+glob_files(os.path.dirname(filename)+'//*.csv')
+glob_files(os.path.dirname(filename)+'//*.sas7bdat')
 
-df = reader(file, filename, logger) 
-#file_names_dict[os.path.basename(filename).lower()], logger)
+df = reader(file, file_names_dict[os.path.basename(filename).lower()], logger)
 
 column_names_list = [x.lower() for x in df.columns.tolist()]
 column_names_dict = {x.lower(): x for x in df.columns.tolist()}
@@ -173,10 +174,11 @@ if validFuncNameAndColumnName(function):
     performPseudo(df, performPseudo_variables)
     #del_column(df, performPseudo_variables+to_be_deleted_vars)
 
-new_filename = getPath(file) +'pseudo_' + Path(getFilename(file)).stem + '.csv'
-logger.info('Ny fil:\n{}'.format(new_filename))
+new_filename = getPath(file) +'pseudo_' + Path(getFilename(file)).stem # + '.csv'
+filename = new_filename.replace("3_Kontrollert","5_Klart")
+logger.info('Ny fil:\n{}'.format(filename))
 
-df.to_csv(new_filename, sep=';',index=False)
+df.to_csv(filename+'.csv', sep=';',index=False)
 #print(df['gyldig_id'].value_counts())
 buf2 = StringIO()
 df.info(buf=buf2)
@@ -187,8 +189,27 @@ logger.info("Variable som er blitt pseudonymisert:\n{}".format(performPseudo_var
 logger.info("Variable som er fjernet fra innfila:\n{}".format(performPseudo_variables+to_be_deleted_vars))
 logger.info("Gyldig id-kontroll:\n{}".format(df['gyldig_id'].value_counts()))
 
+sas_sti = getPath(file).replace("3_Kontrollert", "5_Klart")
+lag_sasfil(df, sas_sti, 'pseudo_' + Path(getFilename(file)).stem)
+logger.info('SAS-fil opprettet')
 
 
+
+##################
+# Rename loggfil #
+##################
+regex = re.compile(r'\D+(\d+).json')
+nr = regex.findall(json_input)
+
+new_logname = LOG_FILENAME
+if nr:
+   new_logname = LOG_FILENAME.replace("pseudo", nr[0]+"_"+"pseudo")  
+
+stamme_innfil = getPath(file)
+mellom_fil = new_logname.replace("/ssb/stamme01/papis/Oppstart/",stamme_innfil)
+logfile = mellom_fil.replace("3_Kontrollert","6_Logger_rapporter")
+
+os.rename(LOG_FILENAME, logfile)
 
 
 
