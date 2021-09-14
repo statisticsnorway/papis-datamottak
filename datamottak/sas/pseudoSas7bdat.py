@@ -172,8 +172,8 @@ class PseudoSas7bdat (SAS7BDAT):
             else:
                 self.logger.error('unknown page type: %s', current_page_type)
             #yield self.current_row
-            if isinstance(self.cached_page, Cached_page):
-                self.cached_page.flush(self.tempFile)
+        if isinstance(self.cached_page, Cached_page):
+            self.cached_page.flush(self.tempFile)
 
     def _read_next_page2(self, start=None):
         self.current_page_data_subheader_pointers = []
@@ -315,8 +315,8 @@ class PseudoSas7bdat (SAS7BDAT):
     
 import string
 fullstring = string.ascii_letters + string.digits
-encrypt = {fullstring[x] : fullstring[(x+1)%52] for x in range(len(fullstring))}
-decrypt = {fullstring[x] : fullstring[(x-1)%52] for x in range(len(fullstring))}
+encrypt = {fullstring[x] : fullstring[(x+1)%len(fullstring)] for x in range(len(fullstring))}
+decrypt = {fullstring[x] : fullstring[(x-1)%len(fullstring)] for x in range(len(fullstring))}
     
 class Cached_page():
     def __init__(self, cache, start, end):
