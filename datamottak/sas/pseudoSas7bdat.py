@@ -171,7 +171,7 @@ class PseudoSas7bdat (SAS7BDAT):
                     current_row_on_page_index = 0
             else:
                 self.logger.error('unknown page type: %s', current_page_type)
-            yield self.current_row
+            #yield self.current_row
             if isinstance(self.cached_page, Cached_page):
                 self.cached_page.flush(self.tempFile)
 
@@ -258,10 +258,10 @@ class PseudoSas7bdat (SAS7BDAT):
             decode = bytearray(decode.encode(self.encoding, self.encoding_errors))
             source[start:end] = decode
             self.cached_page.modified = True
-            row_elements.append(decode)
-            row_elements.append(temp)
-            row_elements.append(len(decode))
-            row_elements.append(len(temp))
+            #row_elements.append(decode)
+            #row_elements.append(temp)
+            #row_elements.append(len(decode))
+            #row_elements.append(len(temp))
             
             return row_elements
 ##############         
