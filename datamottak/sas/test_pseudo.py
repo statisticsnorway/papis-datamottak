@@ -1,5 +1,6 @@
 from .pseudoSas7bdat import PseudoSas7bdat as Ps
-import difflib
+import os
+
 
 def same(name1, name2): 
   with open(name1, "rb") as one: 
@@ -10,22 +11,35 @@ def same(name1, name2):
         other = two.read(4096) 
         if chunk != other: 
           return False 
-      return True 
+    return True
 
-def endToEnd(filename, varList, tempDir = r'C:\Users\tir\Desktop\python\sas7bdat\tmpsas'):
-    file = Ps(filename, tempDir=tempDir, encrypt=True)
-    file.cached_page = None
-    file.readlines2(varList)
-    enc = file.tempFile.name
-    file.close()
+def endToEnd(filename, varList, cleanup=True,
+             tempDir = r'C:\Users\tir\Desktop\python\sas7bdat\tmpsas'):
+    file = Ps(filename)
+    if not file.checkColomnNames(varList):
+        file.close()
+        return False, 'varList is not found in file', filename
     
-    file2 = Ps(enc, tempDir=tempDir, encrypt=False)
-    file2.cached_page = None
-    file2.readlines2(varList)
-    dec = file2.tempFile.name
+    enc = file.pseudo(varList, tempDir=tempDir, encrypt=True)
+    file.close()
+    if same(filename, enc):
+        return False, 'no change to file', filename
+        
+    file2 = Ps(enc)
+    dec = file2.pseudo(varList, tempDir=tempDir, encrypt=False)
     file2.close()
     
-    return same(filename, dec)
+    comp = same(filename, dec)
+    if cleanup:
+        os.remove(enc)
+        os.remove(dec)
+    if (not cleanup) and comp:
+        os.remove(dec)
+    if comp:
+        #End to end success
+        return True, file, enc
+    else:
+        return False, 'Origial and pseudo/depseudo not equal', enc, dec
     
     
     

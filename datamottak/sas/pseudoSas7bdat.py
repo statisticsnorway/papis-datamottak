@@ -10,12 +10,11 @@ class PseudoSas7bdat (SAS7BDAT):
                  extra_time_format_strings=None,
                  extra_date_time_format_strings=None,
                  extra_date_format_strings=None,
-                 skip_header=True,
+                 skip_header=False,
                  encoding='utf8',
                  encoding_errors='ignore',
                  align_correction=True,
-                 fh=None, strip_whitespace_from_strings=False, encrypt=True,
-                 tempDir = r'C:\Users\tir\Desktop\python\sas7bdat\tmpsas'):
+                 fh=None, strip_whitespace_from_strings=False):
 
         super().__init__(path, log_level, 
                                  extra_time_format_strings,
@@ -29,15 +28,16 @@ class PseudoSas7bdat (SAS7BDAT):
             raise FileNotFoundError('File not found')
         if len(self.columns) == 0:
             raise IOError('File columns not found')
+        if self.properties.compression:
+            self.logger.error(
+                        'cannot use %s compression', 
+                        self.properties.compression
+                    )
         #if self.SAS7BDAT.properties.u64 and self.SAS7BDAT.properties.header_length != 8192:
         #    self.SAS7BDAT.logger.warning(
         #        'header length %s != 8192',
         #        self.SAS7BDAT.properties.header_length)
-        self.tempFile = tempfile.NamedTemporaryFile(suffix='tmp', 
-                                                    dir = tempDir, 
-                                                    delete = False)
-        self.copyFile(self._file, self.tempFile)
-        
+
         self.filename = path
         self.encrypt = encrypt
         #self.encoding = encoding
@@ -69,7 +69,6 @@ class PseudoSas7bdat (SAS7BDAT):
         return cls.files
     
     def close(self):
-        self.tempFile.close()
         self._file.close()
     
     def listColumns(self):
@@ -79,21 +78,42 @@ class PseudoSas7bdat (SAS7BDAT):
                        col.type, col.length])
         return li
     
+    def checkColomnNames(self, columnNames): #True if 
+        for col in columnNames:
+            if not col in self.column_names:
+                return False
+        return True
     
-    def readlines2(self, pseudoColumns):
-        """
-        readlines() -> generator which yields lists of values, each a line
-        from the file.
-
-        Possible values in the list are None, string, float, datetime.datetime,
-        datetime.date, and datetime.time.
-        """
+    def pseudo(self, pseudoColumns,
+                 encrypt=True,
+                 suffix='tmp',
+                 tempDir = tempfile.gettempdir(),
+                 deleteTemp = False):
+        if self.properties.compression:
+            raise IOError('Compression not supported')
+        
+        for col in pseudoColumns:
+            if not col in self.column_names:
+                raise ValueError('pseudonym not found')
+                
+        self.encrypt = encrypt
+        self.tempFile = tempfile.NamedTemporaryFile(suffix=suffix, 
+                                                    dir = tempDir, 
+                                                    delete = deleteTemp)
+        self.copyFile(self._file, self.tempFile)
+        self._pseudoLines(pseudoColumns, encrypt)
+        self.tempFile.close()
+        return self.tempFile.name
+        
+    def _pseudoLines(self, pseudoColumns, encrypt):
+        
         bit_offset = self.header.PAGE_BIT_OFFSET
         subheader_pointer_length = self.header.SUBHEADER_POINTER_LENGTH
         row_count = self.header.properties.row_count
         current_row_in_file_index = 0
         current_row_on_page_index = 0
         
+        self.cached_page = None
         self._read_next_page2(self.properties.header_length)
         
         while current_row_in_file_index < row_count:
@@ -240,15 +260,14 @@ class PseudoSas7bdat (SAS7BDAT):
         for i in range(self.properties.column_count):
             length = self.column_data_lengths[i]
             if length == 0:
-                break
+                continue
             start = offset + self.column_data_offsets[i]
             end = offset + self.column_data_offsets[i] + length
             temp = source[start:end]
 ##############
             if not self.columns[i].name in pseudoColumns:
                 continue
-            
-            
+
             readval = self._read_val('s', temp, length)
             decode = readval.decode(self.encoding, self.encoding_errors)
             if self.encrypt:
@@ -263,7 +282,8 @@ class PseudoSas7bdat (SAS7BDAT):
             #row_elements.append(len(decode))
             #row_elements.append(len(temp))
             
-            return row_elements
+            #print(row_elements)
+            #return row_elements
 ##############         
             if self.columns[i].type == 'number':
                 if self.column_data_lengths[i] <= 2:
