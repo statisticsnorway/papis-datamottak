@@ -64,7 +64,7 @@ class PseudoSas7bdat (SAS7BDAT):
         for di, sub, files in os.walk(top):
             for file in files:
                 if '.sas7bdat' in file:
-                    cls.files.append(di + '\\' + file)
+                    cls.files.append(os.path.join(di,file))
         return cls.files
     
     def close(self):
