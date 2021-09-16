@@ -59,7 +59,7 @@ class PseudoSas7bdat (SAS7BDAT):
         fdst.seek(0)
     
     @classmethod
-    def getFiles(cls, top= r'C:\Users\tir\Desktop\python'):
+    def getFiles(cls, top):
         cls.files = []
         for di, sub, files in os.walk(top):
             for file in files:
