@@ -41,27 +41,27 @@ def endToEnd(filename, varList, cleanup=True,
     else:
         return False, 'Origial and pseudo/depseudo not equal', enc, dec
 
-    def getFiles(top):
-        out = []
-        for di, sub, files in os.walk(top):
-            for file in files:
-                if '.sas7bdat' in file:
-                    out.append(os.path.join(di,file))
-        return out
+def getFiles(top):
+    out = []
+    for di, sub, files in os.walk(top):
+        for file in files:
+            if '.sas7bdat' in file:
+                out.append(os.path.join(di,file))
+    return out
     
-    def analyse(filelist, start=0, finish=None):
-        if not finish: 
-            finish = len(filelist)
-        filelist = filelist[start:finish]
-        out = []
-        for file in filelist:
-            out2 = []
-            f = Ps(file)
-            out2.append(f.properties.compression)
-            out2.append(f.endianess)
-            out.append(out2)
-            f.close()
-        return out
+def analyse(filelist, start=0, finish=None):
+    if not finish: 
+        finish = len(filelist)
+    filelist = filelist[start:finish]
+    out = []
+    for file in filelist:
+        out2 = []
+        f = Ps(file)
+        out2.append(f.properties.compression)
+        out2.append(f.endianess)
+        out.append(out2)
+        f.close()
+    return out
             
                 
                 
