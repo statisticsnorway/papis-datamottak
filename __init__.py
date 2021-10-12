@@ -12,11 +12,5 @@ __author__= 'Olaf Espeland Hansen'
 __all__ = []
 
 
-from .funksjoner import Funksjoner 
-from .logger import loggFile
-from .read_json import jsonHandler
-from .readers import Reader
-from .sas_operasjoner import SAS_Operasjoner
-from .pseudo import Pseudo
 
 
