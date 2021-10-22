@@ -29,7 +29,7 @@ except IndexError:
 
 loggen = logg.getLogger()
 
-#Json-konfigurasjonsfil skal være input til programmet
+#Json-konfigurasjonsfil skal vÃ¦re input til programmet
 try:
   json_input = sys.argv[1]
   loggen.info('Informasjon om json-fil:\n{}'.format(json_input))
@@ -51,7 +51,7 @@ except FileNotFoundError:
 
 
 
-# Henter ut nødvendige dictionaries fra json-spesifikasjon
+# Henter ut nÃ¸dvendige dictionaries fra json-spesifikasjon
 jsH = jsonHandler(js_obj, loggen)
 fileObject = jsH.getFileObject() 
 filename = jsH.getPath(fileObject) + jsH.getFilename(fileObject)
@@ -64,7 +64,7 @@ functions_list = list(set(dir(Funksjoner()) + dir(Pseudo())))
 
 
 ###
-# Skal legge til info om format på sas-fil her
+# Skal legge til info om format pÃ¥ sas-fil her
 ###
 sas_op = SAS_Operasjoner()
 format_dict = sas_op.getFormatDict(sas_op.getFilename(filename), sas_op.getPath(filename))
@@ -74,7 +74,7 @@ start_time = time.time()
 
 # Innlesing av fil
 reader = Reader()
-file_names_dict = reader.getFileNameWithLowerCase(filename) #Skal ikke være case-sensitiv
+file_names_dict = reader.getFileNameWithLowerCase(filename) #Skal ikke vÃ¦re case-sensitiv
 
 fileExtension = reader.getExtension(filename, loggen)
 loggen.info('Fileextension: {0}'.format(fileExtension))  
@@ -88,7 +88,7 @@ print("--- %s seconds ---" % (time.time() - start_time))
 
 loggen.info('Informasjon om filnavn:\n{}'.format(file_names_dict))
 
-# Standard output er til skjerm. Endrer dette for å få utskrift til logg.
+# Standard output er til skjerm. Endrer dette for Ã¥ fÃ¥ utskrift til logg.
 buf = StringIO()
 df.info(buf=buf)
 
@@ -101,32 +101,37 @@ loggen.info('FuncObject:\n{}'.format(funcObject))
 
 ##################################################
 #                                                #
-# Utfører spesifikajsoner (pseudonymisering etc) #
+# UtfÃ¸rer spesifikajsoner (pseudonymisering etc) #
 #                                                #
 ##################################################
 performPseudo_variables = []
 to_be_deleted_vars = []
+rename_variables = {}
+RENAME_COLUMN = 'pseudo_'
 if jsH.validFuncNameAndColumnName(funcObject, functions_list, column_names_dict, loggen):
   for f in funcObject:
     kolonne = f.get('fraKolonne').lower()
     if f.get('funksjonsNavn') == 'performPseudo':
       performPseudo_variables.append(column_names_dict[kolonne])
+      rename_variables[column_names_dict[kolonne]] = str(RENAME_COLUMN + column_names_dict[kolonne])
       if bool(format_dict):
         del format_dict[column_names_dict[kolonne]]
     if f.get('funksjonsNavn') != 'performPseudo':
       if f.get('funksjonsNavn') == 'del_column':
-        to_be_deleted_vars.append(column_names_dict[kolonne])
+        to_be_deleted_vars.append(column_names_dict[kolonne]) 
         del format_dict[column_names_dict[kolonne]]
       else:
         kolonne = f.get('fraKolonne').lower()
         funksjon = getattr(Funksjoner(), f.get('funksjonsNavn'))
         df[f.get('nyKolonne')] = df[column_names_dict[kolonne]].apply( lambda x : funksjon(x) )
 
-  if len(performPseudo_variables) > 0:
+  if performPseudo_variables:
     pseudo = Pseudo()
     pseudo.performPseudo(df, performPseudo_variables)
-    pseudo.del_column(df, performPseudo_variables + to_be_deleted_vars ) 
-
+  if rename_variables:
+    df.rename(rename_variables, axis = 1, inplace=True)
+  if to_be_deleted_vars:
+    df.drop(to_be_deleted_vars, axis = 1)
 
 #####################
 #                   #
