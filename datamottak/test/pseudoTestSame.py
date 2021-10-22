@@ -41,7 +41,7 @@ def endToEnd(filename, varList, cleanup=True,
     else:
         return False, 'Origial and pseudo/depseudo not equal', enc, dec
 
-def getFiles(top):
+def getSasFiles(top):
     out = []
     for di, sub, files in os.walk(top):
         for file in files:

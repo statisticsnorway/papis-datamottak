@@ -15,6 +15,10 @@ class PseudoSas7bdat (SAS7BDAT):
                  encoding_errors='ignore',
                  align_correction=True,
                  fh=None, strip_whitespace_from_strings=False):
+        
+        if (not fh) and (not os.path.isfile(path)):
+            raise FileNotFoundError('File not found')
+        fh = fh or open(self.path, 'rb')
 
         super().__init__(path, log_level, 
                                  extra_time_format_strings,
@@ -24,31 +28,16 @@ class PseudoSas7bdat (SAS7BDAT):
                                  encoding_errors, align_correction,
                                  fh, strip_whitespace_from_strings)
         
-        if not os.path.isfile(path):
-            raise FileNotFoundError('File not found')
         if len(self.columns) == 0:
-            raise IOError('File columns not found')
+            self.logger.waring('no columns found')
         if self.properties.compression:
             self.logger.error(
                         'cannot use %s compression', 
                         self.properties.compression
                     )
-        #if self.SAS7BDAT.properties.u64 and self.SAS7BDAT.properties.header_length != 8192:
-        #    self.SAS7BDAT.logger.warning(
-        #        'header length %s != 8192',
-        #        self.SAS7BDAT.properties.header_length)
+
 
         self.filename = path
-        self.encrypt = encrypt
-        #self.encoding = encoding
-        #self.encoding_errors = encoding_errors
-
-        #self.columns = list(self.SAS7BDAT.columns)
-        #self.header = self.SAS7BDAT.header
-        #self.properties = self.SAS7BDAT.properties
-        #self.logger = self.SAS7BDAT.logger
-        #self._file = self.SAS7BDAT._file
-        #self.endianess = self.SAS7BDAT.endianess
         
     @classmethod
     def copyFile(cls, fsrc, fdst):
@@ -57,18 +46,6 @@ class PseudoSas7bdat (SAS7BDAT):
         shutil.copyfileobj(fsrc, fdst)
         fsrc.seek(0)
         fdst.seek(0)
-    
-    @classmethod
-    def getFiles(cls, top):
-        cls.files = []
-        for di, sub, files in os.walk(top):
-            for file in files:
-                if '.sas7bdat' in file:
-                    cls.files.append(os.path.join(di,file))
-        return cls.files
-    
-    def close(self):
-        self._file.close()
     
     def listColumns(self):
         li = list()
