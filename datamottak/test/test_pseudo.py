@@ -13,7 +13,6 @@ class TestPseudo(unittest.TestCase, SimpleHttpServer):
         "col1" : ['2YZF', '', '.k'],
         "col2" : ['ZVay', 'øøøø', 'h61']
         }
-    
     def testPseudo(self):
         p = Pseudo()
         df = pd.DataFrame(self.data)
