@@ -18,7 +18,7 @@ class PseudoSas7bdat (SAS7BDAT):
         
         if (not fh) and (not os.path.isfile(path)):
             raise FileNotFoundError('File not found')
-        fh = fh or open(self.path, 'rb')
+        fh = fh or open(path, 'rb')
 
         super().__init__(path, log_level, 
                                  extra_time_format_strings,

@@ -6,6 +6,7 @@ Created on Thu Mar 18 14:34:56 2021
 """
 
 from papis_service.common.configureServerEnv import ConfigureServerEnv
+from .sas.pseudosas7bdat import PseudoSas7bdat
 
 class Pseudo:
   _similar = {"AUTH" : "NONE", "AUTH_LOCATION" : None,
@@ -15,7 +16,7 @@ class Pseudo:
     }
 
   _test3 = {'CACHE_SOURCE' : "SQL" , "CACHE_PARAM" : 100000,
-             "PSEUDO_ALGORITHM" : "FFX", "KEY_LOCATION" : 
+             "PSEUDO_ALGORITHM" : "FF3", "KEY_LOCATION" : 
              'EF4359D8D580AA4F7F036D6F04FC6A94',
              "KEY_TYPE" : "FROMHEX", "CACHE_LOCATION" : None}
 
@@ -56,7 +57,14 @@ class Pseudo:
         p_dict = self.cache.decryptSet(col_set)
     for var in varlist:
         df[var].replace(p_dict, inplace=True)
-
+  
+  #Returns a temporary file
+  def performPseudoSasTemp(self, filename, varlist, encrypt = True, tempDir=None):
+    file = PseudoSas7bdat(filename)
+    temp = file.pseudo(varlist)
+    file.close()
+    return temp
+          
 #  def performPseudoSingleMessage(self, df, varlist):  
 #    if not getattr(SimpleHttpServer, "TCPServer", None):
 #        SimpleHttpServer.setUpClass()
