@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title%}Index{% endblock %} 
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+  <div class="container">
+  {% for report in reports %}
+    <article class="media content-section">
+      <div class="media-body">
+        <div class="article-metadata">
+	  <a class="mr-2" href="#">{{ report.author.username }}</a>
+	  <small class="text-muted">{{ report.dato_opprettet.strftime('%Y-%m-%d') }}</small>
+        <div>
+	<p class="article-title">Kildefil: {{ report.kildefil }}</p>
+	<p class="article-content">Pseudonymiserte variable: {{ report.pseudo_var }}</p>
+	<p class="article-content">Slettet: {{ report.delete_var }}</p>
+	<p class="article-content">Pseudonymisert fil: {{ report.resultatfil }}</p> 
+      </div>
+    </article> 
+  {% endfor %} 
+  </div>
+{% endblock %} 

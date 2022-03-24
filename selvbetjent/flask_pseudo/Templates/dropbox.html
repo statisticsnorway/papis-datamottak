@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title%}Pseudo{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+ 
+  
+ <div class="container">
+  <form method="POST" action="" class="row g-3">
+  <div class="col-md-6">
+    <input class="form-control me-2" type="search" name="folder"  placeholder="stammekatalog" aria-label="Search">
+  </div>
+  <div class="col-md-12">
+    <button class="btn btn-outline-success my-2 my-sm-0" name="submit_button" type="submit" value="katalog">Sett katalog for ny fil</button>
+  </div>
+  </form>
+ </div>
+ <br>   
+
+  
+ <div class="container">
+    <table class="table table-hover table-sm">
+    <form method="POST" action="" >
+  	<thead>
+    		<tr>
+			{% for h in header %}
+			<th scope="col">{{ h }}</th>
+			{% endfor %}
+		</tr>
+	</thead>
+	<tbody>
+    		<tr>
+      			{% for c in row %}
+			<td>{{ c }}</td>
+			{% endfor %}
+		</tr>
+		<tr>
+			
+			{% for h in header %}
+			<td>
+				<div class="form-check form-switch">
+  				<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" value="{{h}}" name="pseudo">
+  				<label class="form-check-label" for="flexSwitchCheckDefault">Pseudo?</label>
+			</td>
+			{% endfor %}
+		</tr>
+		<tr>
+			{% for h in header %}
+			<td>
+				<div class="form-check form-switch">
+  				<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" value="{{h}}" name="delete">
+  				<label class="form-check-label" for="flexSwitchCheckDefault">Slett?</label>
+			</td>
+			{% endfor %}
+		</tr>
+			
+  			
+	</tbody>
+    </table>
+    <input type="submit" class="btn btn-outline-success my-2 my-sm-0" name="submit_button" value="Oppdater konfigurasjonsfil">
+    </form>
+</div>
+
+
+
+
+
+<div class="container">
+    <h4>Konfigurasjonsfil:</h4>
+    <div class="results">
+      <pre>{{jsonfile}}</pre>
+    </div>
+</div>
+
+<div class="container">    
+    <form method="POST" action="" >
+      <input class="btn btn-outline-success my-2 my-sm-0" type="submit" name="submit_button" value="Pseudonymiser fil">  
+      <input class="btn btn-outline-success my-2 my-sm-0" type="submit" name="submit_button" value="Vis pseudofil">
+    </form>
+</div>
+<br></br>  
+
+<div class="container">       
+   
+      
+    <table class="table table-hover table-sm">
+  	<thead>
+    		<tr>
+			{% for h in p_header %}
+			<th scope="col">{{ h }}</th>
+			{% endfor %}
+		</tr>
+	</thead>
+	<tbody>
+    		<tr>
+      			{% for p in p_row %}
+			<td>{{ p }}</td>
+			{% endfor %}
+		</tr>
+	</tbody>
+    </table>
+      
+      <pre>{{pseudofil}}</pre>
+    </div>
+    
+  
+
+  
+{% endblock %}

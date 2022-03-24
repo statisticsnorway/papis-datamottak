@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title%}Leverandor{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+ 
+  
+ <div class="container">
+     <div class="content-section">
+     <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class = "form-group">
+        <legend class = "border-bottom mb-4">{{ legend }}</legend>
+        <div class = "form-group">
+	      {{ form.leverandor.label(class="form-control-label") }}
+
+	      {% if form.leverandor.errors %}
+	  	    {{ form.leverandor(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.leverandor.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.leverandor(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+	    <div class = "form-group">
+	      {{ form.kort_lev.label(class="form-control-label") }}
+	      {% if form.kort_lev.errors %}
+	  	    {{ form.kort_lev(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.kort_lev.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.kort_lev(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+	    <div class = "form-group">
+	    {{ form.websak.label(class="form-control-label") }}
+	    {% if form.websak.errors %}
+	  	  {{ form.websak(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.websak.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	    {% else %}
+	  	  {{ form.websak(class="form-control form-control-lg") }}
+	    {% endif %}
+	    </div>
+        <div class = "form-group">
+	    {{ form.ansv_seksjon.label(class="form-control-label") }}
+	      {% if form.ansv_seksjon.errors %}
+	  	  {{ form.ansv_seksjon(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.ansv_seksjon.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.ansv_seksjon(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+      </fieldset>
+      <div class = "form-group">
+        {{ form.submit(class="btn btn-outline-info") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

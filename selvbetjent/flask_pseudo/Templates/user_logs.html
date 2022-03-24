@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title%}Index{% endblock %} 
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+  <div class="container">
+  <h1 class="mb-3"> Logger for {{ user.username }} ({{ logs.total }}) </h1>
+  {% for log in logs.items %}
+    
+    <article class="media content-section">
+      <div class="media-body">
+        <div class="article-metadata">
+	  <a class="mr-2" href="{{ url_for('users.user_log', username=log.author.username) }}">{{ log.author.username }}</a>
+	  <small class="text-muted">{{ log.dato_opprettet.strftime('%Y-%m-%d') }}</small>
+        <div>
+	<p class="article-title">Kildefil: {{ log.kildefil }}</p>
+	<p class="article-content">Pseudonymisert fil: {{ log.resultatfil }}</p> 
+	<p class="article-content">Pseudonymiserte variable: {{ log.pseudo_var }}</p>
+	<p class="article-content">Slettet: {{ log.delete_var }}</p>	
+      </div>
+    </article> 
+    
+  {% endfor %} 
+  {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+    {% if page_num %}
+      {% if logs.page == page_num %}
+        <a class="btn btn-info mb-4" href="{{ url_for('users.user_log', username=user.username, page=page_num) }}"> {{ page_num }} </a>
+      {% else %}
+        <a class="btn btn-outline-info mb-4" href="{{ url_for('users.user_log', username=user.username, page=page_num) }}"> {{ page_num }} </a>
+      {% endif %}
+    {% else %}
+      ...
+    {% endif %}
+  {% endfor %}
+  </div>
+{% endblock %} 

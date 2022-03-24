@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title%}Login{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+<div class="container">
+  <div class="content-section">
+    <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class = "form-group">
+        <legend class = "border-bottom mb-4">Logg inn</legend>
+        <div class = "form-group">
+	  {{ form.username.label(class="form-control-label") }}
+
+	  {% if form.username.errors %}
+	  	{{ form.username(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.username.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	  {% else %}
+	  	{{ form.username(class="form-control form-control-lg") }}
+	  {% endif %}
+	</div>
+	<div class = "form-group">
+	  {{ form.password.label(class="form-control-label") }}
+	  {% if form.password.errors %}
+	  	{{ form.password(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.password.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	  {% else %}
+	  	{{ form.password(class="form-control form-control-lg") }}
+	  {% endif %}
+	</div>
+	<div class="form-check">
+		{{ form.remember(class="form-check-input") }}
+		{{ form.remember.label(class="form-check-label") }}
+	</div>
+      </fieldset>
+      <div class = "form-group">
+        {{ form.submit(class="btn btn-outline-info") }}
+      </div>
+      <small class="text-muted ml-2">
+      	<a href = "#"> Glemt passord?</a>
+      </small>
+    </form>
+  </div>
+  <div class="border-top pt-3">
+    <small class="text-muted">
+       Ny bruker? <a class="ml-2" href = "{{ url_for('users.register') }}">Registrer bruker</a>
+    </small>
+  </div>
+</div>
+
+{% endblock %}
