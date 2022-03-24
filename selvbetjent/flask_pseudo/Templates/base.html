@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang=\"no\">
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Bootstrap file -->
+   
+  <link type="text/css" rel="stylesheet" href="{{url_for('static', filename = 'css/bootstrap.min.css') }}">
+  
+  <title>{% block title %}{% endblock %}</title>
+</head>
+<body>
+  
+  {% include 'navbar.html' %}
+  <br>
+  <br>
+  <br>
+  {% block content %}
+  {% endblock %}
+  <script src="{{url_for('static', filename = 'js/jquery-3.6.0.min.js') }}" type="text/javascript"></src>
+  <script src="{{url_for('static', filename = 'js/bootstrap.min.js') }}"></src> 
+</body>
+</html>

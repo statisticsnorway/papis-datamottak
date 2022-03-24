@@ -1,0 +1,13 @@
+version: "3.7"
+
+services:
+  papis-selvbetjent:
+    image: papis-selvbetjent
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 5010:5010
+
+
+

@@ -1,0 +1,33 @@
+<h3>Velg variable som skal pseudonymiseres</h3> 
+    <ul>
+      {% for var in varnames %}
+        <li>
+        {{var}}<input type="checkbox" value="{{var}}" name="mycheckbox">
+        </li>
+      {% endfor %}
+      <input type="submit" name="submit_button" value="Oppdater konfigurasjonsfil">
+    </ul>
+    
+    
+  <div class="container">
+  <form method="POST" action="" >
+    <input type="submit" name="submit_button" value="Filvisning">
+    <input type="submit" name="submit_button" value="Lukk filvisning">
+  </form>
+ </div>
+ 
+    
+ <div class="container">
+  <form method="POST" action="{{url_for('getFolder') }}" class="row g-3">
+  <div class="col-md-6">
+    <input class="form-control me-2" type="search" name="folder"  placeholder="stammekatalog" aria-label="Search">
+  </div>
+  <div class="col-md-12">
+    <button class="btn btn-outline-success my-2 my-sm-0" name="submit_button" type="submit">Sett katalog for filen</button>
+  </div>
+  </form>
+ </div>
+
+ <form method="POST" action="" >
+        <input class="btn btn-outline-success my-2 my-sm-0" type="submit" name="submit_button" value="Vis pseudofil">
+      </form>
