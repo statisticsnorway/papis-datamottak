@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title%}Leverandor{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+
+ <div class="container">
+     <div class="content-section">
+     <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class = "form-group">
+        <legend class = "border-bottom mb-4">{{ legend }}</legend>
+        <div class = "form-group">
+	      {{ form.leveranse.label(class="form-control-label") }}
+
+	      {% if form.leveranse.errors %}
+	  	    {{ form.leveranse(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.leveranse.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.leveranse(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+	    <div class = "form-group">
+	      {{ form.leverandor_kort_lev.label(class="form-control-label") }}
+	      {% if form.leverandor_kort_lev.errors %}
+	  	    {{ form.leverandor_kort_lev(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.leverandor_kort_lev.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.leverandor_kort_lev(class="form-control form-control-lg", readonly=true) }}
+	      {% endif %}
+	    </div>
+	    <div class = "form-group">
+	    {{ form.mot_seksjon.label(class="form-control-label") }}
+	    {% if form.mot_seksjon.errors %}
+	  	  {{ form.mot_seksjon(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.mot_seksjon.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	    {% else %}
+	  	  {{ form.mot_seksjon(class="form-control form-control-lg") }}
+	    {% endif %}
+	    </div>
+        <div class = "form-group">
+	    {{ form.kontakt_seksjon.label(class="form-control-label") }}
+	      {% if form.kontakt_seksjon.errors %}
+	  	  {{ form.kontakt_seksjon(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.kontakt_seksjon.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.kontakt_seksjon(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+
+		<div class = "form-group">
+	    {{ form.kontaktinfo_seksjon.label(class="form-control-label") }}
+	      {% if form.kontaktinfo_seksjon.errors %}
+	  	  {{ form.kontaktinfo_seksjon(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.kontaktinfo_seksjon.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.kontaktinfo_seksjon(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+
+		<div class = "form-group">
+	    {{ form.kontakt_lev.label(class="form-control-label") }}
+	      {% if form.kontakt_lev.errors %}
+	  	  {{ form.kontakt_lev(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.kontakt_lev.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.kontakt_lev(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+
+		<div class = "form-group">
+	    {{ form.kontaktinfo_lev.label(class="form-control-label") }}
+	      {% if form.kontaktinfo_lev.errors %}
+	  	  {{ form.kontaktinfo_lev(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.kontaktinfo_lev.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.kontaktinfo_lev(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+
+		 <div class = "form-group">
+	    {{ form.forventet_dato_neste.label(class="form-control-label") }}
+	      {% if form.forventet_dato_neste.errors %}
+	  	  {{ form.forventet_dato_neste(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.forventet_dato_neste.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.forventet_dato_neste(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+
+		<div class = "form-group">
+	    {{ form.hyppighet.label(class="form-control-label") }}
+	      {% if form.hyppighet.errors %}
+	  	  {{ form.hyppighet(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.hyppighet.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.hyppighet(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+      </fieldset>
+      <div class = "form-group">
+        {{ form.submit(class="btn btn-outline-info") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
