@@ -6,7 +6,7 @@ import tempfile
 
 
 class PseudoSas7bdat (SAS7BDAT):
-    def __init__(self, path, log_level=logging.INFO,
+    def __init__(self, path, algorithm, log_level=logging.INFO,
                  extra_time_format_strings=None,
                  extra_date_time_format_strings=None,
                  extra_date_format_strings=None,
@@ -27,7 +27,7 @@ class PseudoSas7bdat (SAS7BDAT):
                                  skip_header, encoding,
                                  encoding_errors, align_correction,
                                  fh, strip_whitespace_from_strings)
-        
+        self.algorithm = algorithm
         if len(self.columns) == 0:
             self.logger.waring('no columns found')
         if self.properties.compression:
@@ -64,7 +64,7 @@ class PseudoSas7bdat (SAS7BDAT):
                  encrypt=True,
                  suffix='tmp',
                  tempDir = tempfile.gettempdir(),
-                 deleteTemp = False):
+                 delete = True):
         if self.properties.compression:
             raise IOError('Compression not supported')
         
@@ -75,11 +75,10 @@ class PseudoSas7bdat (SAS7BDAT):
         self.encrypt = encrypt
         self.tempFile = tempfile.NamedTemporaryFile(suffix=suffix, 
                                                     dir = tempDir, 
-                                                    delete = deleteTemp)
+                                                    delete = delete)
         self.copyFile(self._file, self.tempFile)
         self._pseudoLines(pseudoColumns, encrypt)
-        self.tempFile.close()
-        return self.tempFile.name
+        return self.tempFile
         
     def _pseudoLines(self, pseudoColumns, encrypt):
         
@@ -247,9 +246,9 @@ class PseudoSas7bdat (SAS7BDAT):
             readval = self._read_val('s', temp, length)
             decode = readval.decode(self.encoding, self.encoding_errors)
             if self.encrypt:
-                decode = ''.join([encrypt.get(x, x) for x in decode])
+                decode = self.algorithm.encrypt(decode)
             else:
-                decode = ''.join([decrypt.get(x, x) for x in decode])
+                decode = self.algorithm.decrypt(decode)
             decode = bytearray(decode.encode(self.encoding, self.encoding_errors))
             source[start:end] = decode
             self.cached_page.modified = True
@@ -258,7 +257,6 @@ class PseudoSas7bdat (SAS7BDAT):
             #row_elements.append(len(decode))
             #row_elements.append(len(temp))
             
-            #print(row_elements)
             #return row_elements
 ##############         
             if self.columns[i].type == 'number':
@@ -308,12 +306,7 @@ class PseudoSas7bdat (SAS7BDAT):
         cache = self._file.read(page_length)
         end = self._file.tell()
         return Cached_page(cache, start, end)
-    
-import string
-fullstring = string.ascii_letters + string.digits
-encrypt = {fullstring[x] : fullstring[(x+1)%len(fullstring)] for x in range(len(fullstring))}
-decrypt = {fullstring[x] : fullstring[(x-1)%len(fullstring)] for x in range(len(fullstring))}
-    
+  
 class Cached_page():
     def __init__(self, cache, start, end):
         self.cache = bytearray(cache)
