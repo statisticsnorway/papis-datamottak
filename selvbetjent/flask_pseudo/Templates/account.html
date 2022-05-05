@@ -12,6 +12,7 @@
   {% endif %}
 {% endwith %}
   <div class="container">
-    <h1>{{ current_user.username }}</h1>
+    <h2>Account: {{ current_user.username }}</h2>
+    <h2>Opprettet: {{ current_user.created_time.strftime("%a, %d-%m-%Y") }}</h2>
   </div>
 {% endblock %} 

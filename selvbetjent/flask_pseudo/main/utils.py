@@ -1,11 +1,11 @@
-import sys
 from os.path import normpath, join, isdir, isfile
 from flask import current_app
 import pandas as pd
 import json
 
 
-sys.path.append('/ssb/stamme01/papis/_Programmer/python/papis-datamottak/datamottak')
+sas_op = ''
+#sys.path.append('/ssb/stamme01/papis/_Programmer/python/papis-datamottak/datamottak')
 #from sas_operasjoner import *
 
 
@@ -23,7 +23,7 @@ def read_file(fileName, encoding='unicode_escape'):
 def allowed_file(filename):
   return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['EXTENSIONS']
 
-def update_json(sas_op, filename, data, pseudo_liste='', delete_liste = '',  katalog=''):
+def update_json(sas_op, filename, data, pseudo_liste='',  katalog=''):
   fil = data['fil']
   fil['sti'] = sas_op.getPath(filename)+'/'
   fil['navn'] = sas_op.getFilename(filename)+'.sas7bdat'
@@ -35,13 +35,7 @@ def update_json(sas_op, filename, data, pseudo_liste='', delete_liste = '',  kat
     ny = {"funksjonsNavn": "performPseudo",
           "fraKolonne" : var,
           "nyKolonne" : "pseudo_"+var}
-    funksjon = data['funksjon'].append(ny)
-  
-  for var in delete_liste:
-    ny = {"funksjonsNavn": "del_column",
-          "fraKolonne" : var
-         }
-    funksjon = data['funksjon'].append(ny)
+    data['funksjon'].append(ny)
 
   if len(pseudo_liste) < 1 and katalog == '':
     fil['sti'] = ''

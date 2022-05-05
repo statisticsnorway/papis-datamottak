@@ -1,167 +1,169 @@
-import os
-from pathlib import Path
-
 from flask import Blueprint
-from flask import request, redirect, render_template, json, flash, url_for
-from flask_pseudo.main.utils import *
-from flask_pseudo.models import Log
-from flask_login import current_user
-
-from flask_pseudo import db
-
+from flask import request, redirect, render_template, json, flash, url_for, current_app
+from flask_login import current_user, logout_user
+from ..models import Log
+from ..create_app import data, db, root
+from stat import S_ISDIR, S_ISREG
+from os.path import split 
+import os
+import io
+from urllib.parse import quote
+import pandas as pd
+import threading
 
 main = Blueprint('main', __name__)
 
-with open('config_mal.json', 'r') as myfile:
-  data=json.loads(myfile.read())
-
 #sas_op = SAS_Operasjoner()
 
- 
+@main.before_app_first_request
+def init_main():
+    current_app.data = data
+    current_app.db = db
+    current_app.root = root
 
+@main.route('/index')
 @main.route('/')
 def index():
     return render_template('index.html')
-
 
 @main.route('/search', methods=['POST', 'GET'])
 def search():
     if request.method == 'POST':
       path = request.form['folder']
-      return redirect(url_for('main.about', path=path))
+      return redirect(url_for('main.files', path=path))
     else:
       flash('Oppgi stammekatalog</fil>', 'warning')
-
-
+      
+def con_is_active(ssh):
+    if ssh.get_transport() is not None:
+        if False == ssh.get_transport().is_active():
+            return False
+    try:
+        ssh.get_transport().send_ignore()
+        return True
+    except EOFError:
+        return False
 
 @main.route('/files/')
 @main.route('/files/<path:path>', methods=['POST', 'GET'])
-def about(path = ''):
-    root = '/ssb/'
+def files(path = ''):
+    if not current_user.is_authenticated:
+        flash('Kan ikke se filer, bruker er ikke logget inn', 'warning')
+        return redirect(url_for('users.login'))
     
-    file = normpath(join(root, path))
+    if not con_is_active(current_user.ssh):
+        logout_user()
+        flash('Koblingen til filsystem har forsvunnet. Koble opp igjen', 'warning')
+        return redirect(url_for('users.login'))
 
-    file = getPath(path) if path != '' else normpath(join(root,path))
-
-    if not (Path(root) in Path(file).parents 
-            or Path(root) == Path(file)):
-        flash(f'{file} is not below {root}', 'warning')
-    if not (isfile(file) or isdir(file)):
-        flash(f'{file} is neither file or directory', 'warning')
-        
+    #Split of parent directory and reconstruct path
+    path_split = split('/' + path.strip('/'))
+    if path_split[0] == '/':
+        path_join = path_split[0] + path_split[1] 
+    else:
+        path_join = path_split[0] + '/' + path_split[1]
     
-    st = []
-    fi = []
-    if isdir(file):
-      update_json(sas_op,file,data)
-      if os.access(file, os.R_OK):
-        flash(f'You are searching directory {file}', 'info')
-        traverse = next(os.walk(file))
-        if path != '':
-          dic=dict([(f'{path}/..', '..')])
-          st.append(dic)
+    #path_split = ('/Users/tir/Desktop/python/sas7bdat, testfil.sas7bdat')
+    #path_join = '/Users/tir/Desktop/python/sas7bdat/testfil.sas7bdat'
+    print(f'Path is: {path}, striped path is: {path_split}, joined path: {path_join}')
+    
+    #If root
+    try:
+        if path_split[1] == '':
+            root = current_user.sftp.listdir_attr(path_split[0])
+            current_user.lastdir = (path_split[0], root)
+            return showDirectory(current_user.lastdir)
+        else:
+            parent = current_user.sftp.listdir_attr(path_split[0])
+            entry = [entry for entry in parent if entry.filename == path_split[1]].pop()
+            if S_ISDIR(entry.st_mode):
+                listing = current_user.sftp.listdir_attr(path_join)
+                current_user.lastdir = (path_join, listing)
+                return showDirectory(current_user.lastdir)
+            elif S_ISREG(entry.st_mode):
+                #with tempfile.TemporaryFile(mode='w+b', 
+                #            buffering=io.DEFAULT_BUFFER_SIZE) as tmp:
+                    try:
+                        file = current_user.sftp.file(path_join, 
+                                mode='r', bufsize=io.DEFAULT_BUFFER_SIZE)
+                        return showFile(path_join, path_split[1], file)
+                    except IOError as ex:
+                        flash(f'{path_join} could not be read, IOError {ex}', 'warning')
+                        return showDirectory(current_user.lastdir)
+            else:
+                flash(f'{path_join} is neither evaluated to file or directory', 'warning')
+                return showDirectory(current_user.lastdir)
+    except FileNotFoundError as ex:
+        flash(f'{path_join} is neither file or directory, FileNotFoundError {ex}', 'warning')
+        return showDirectory(current_user.lastdir)        
+    
+def showDirectory(listing):
+    parent, pathlist = listing
+    parent = parent if parent != '/' else ''
+    fo, fi = dict(), dict()
+    for entry in pathlist:
+        if S_ISDIR(entry.st_mode):
+            #print(entry.filename + " is folder")
+            fo[quote('/files' + parent + '/' + entry.filename)] = entry.filename
+        elif S_ISREG(entry.st_mode):
+            fi[quote('/files' + parent + '/' + entry.filename)] = entry.filename
+            #print(entry.filename + " is file")
+    return render_template('browser.html', folder=[fo], files=[fi])
 
-        for dirs in traverse[1]:
-          d = join(path, dirs)
-          dic=dict([(d, dirs)])
-          st.append(dic)
 
-        for files in traverse[2]:
-          if allowed_file(files):
-            d = join(path, files)
-            dic=dict([(d, files)])
-            fi.append(dic)
-      else:
-        flash(f'Ikke tilgang til {file}', 'warning')
-
-    elif isfile(file): 
-      if os.access(file, os.R_OK):
-        flash(f'File {file}', 'info')
-        row = ''
-        p_row = ''
-        pseudofil = ''
-        header = ''
-        p_header = ''
-        df = read_file(file)
-        header = df.columns.tolist()
-        row = df.iloc[0].values.tolist()
-        pseudo_vars=''
-        delete_vars=''
-        katalog=''
-        fil=''
+def showFile(fullname, filename, file_object):
+     
+    try:
+    #encoding='unicode_escape'
+        df = pd.read_sas(file_object, format='sas7bdat', 
+                         index=None, encoding=None, iterator=False,
+                         chunksize = io.DEFAULT_BUFFER_SIZE)
+        header = [col.name for col in df.columns]
+        rows = df.read(2)
+        row0 = rows.iloc[0].values.tolist()
+        row1 = rows.iloc[1].values.tolist()
         
-        if request.method == 'POST':
-          if request.form['submit_button'] == 'Oppdater konfigurasjonsfil':
-            pseudo_vars = request.form.getlist('pseudo')
-            delete_vars = request.form.getlist('delete')
-            update_json(sas_op, file, data, pseudo_vars, delete_vars, '')
-            fil = data['fil']
-          
-          elif request.form['submit_button'] == 'katalog':
-            root = '/ssb/'
-            path = request.form['folder']
-            katalog = getPath(path) if path != '' else normpath(join(root,path))
-            if katalog != '/ssb':
-              if os.access(katalog, os.R_OK):
-                update_json(sas_op, file, data, '', '', katalog)
-              else:  
-                flash(f'{katalog} is not valid', 'warning')
-            else:
-              flash('Oppgi stammekatalog</fil>', 'warning')
-          
-          elif request.form['submit_button'] == 'Pseudonymiser fil':
-            configfil = sas_op.getPath(file)+'/config.json'
-            if config_ready(data):
-              with open(configfil, 'w') as f:
-                json.dump(data, f, indent=4)
-              os.system('python3 /ssb/stamme01/papis/_Programmer/python/papis-datamottak/main_datamottak.py '+ configfil) 
-              
-              fil = data['fil']
-              pseudo=[]
-              deleted = []
-              katalog = fil['utkatalog']
-              for f in data['funksjon']:
-                if f['funksjonsNavn'] == 'performPseudo':
-                  pseudo.append(f['fraKolonne'])
-                if f['funksjonsNavn'] == 'del_column':
-                  deleted.append(f['fraKolonne'])
-              
-              log = Log(kildefil=fil['sti']+fil['navn'], pseudo_var=", ".join(pseudo), delete_var=", ".join(deleted), resultatfil=katalog+'/'+'pseudo_'+sas_op.getFilename(file)+'.sas7bdat', user_id=current_user.id)
-              db.session.add(log)
-              db.session.commit()
-              flash('Pseudomymisert fil laget. Se logger', 'success')            
-            else:
-              flash('Oppdater konfigurasjonsfil', 'warning')
+        split = os.path.splitext(fullname)
+        jsonfile = {'gammelfil': fullname,
+                    'nyfil' : split[0] + '_pseudo' + split[1],
+                    'pseudo' : []
+                    }
+    except Exception as ex:
+        return f'Pandas error: {ex}'
+    if request.method == 'GET':
+        return render_template('dropbox.html', orgfil=jsonfile['gammelfil'], nyfil=jsonfile['nyfil'],
+                               header=header, row0=row0, row1=row1, 
+                               jsonfile=jsonfile)
+    elif request.method != 'POST':
+        return 'Request method not GET or POST'
+    
+    #jsonfile['request'] = request.form.copy()
+    
+    jsonfile['pseudo'] = request.form.getlist('pseudo')
+    #jsonfile['nyttfilnavn'] = request.form.get('nyttnavn')
+    
+    if request.form['submit_button'] == 'Oppdater konfigurasjonsfil':
+        flash('Oppdater konfigurasjonsfil', 'info')
+    elif request.form['submit_button'] == 'Pseudonymiser fil':
+        flash('Pseudonymiserer fil', 'info')
+        if not getattr(current_app, 'pseudoThread', None):
+            current_app.pseudoThread = set()
+        thread = threading.Thread(target=runPseudo, 
+                                  args =(jsonfile['gammelfil'], 
+                                         jsonfile['nyfil'],
+                                         jsonfile['pseudo']
+                                         ),
+                                  name = 'pseudo' + str(len(set())))
+        current_app.pseudoThread.add(thread)
+        thread.start()
+    else:
+        return "Should not be reached"
+    #varsx = sas_op.getVarnames(sas_op.getFilename(filename), sas_op.getPath(filename))
+    #columns = varsx.iloc[:,0].to_list()
+    return render_template('dropbox.html', orgfil=jsonfile['gammelfil'], nyfil=jsonfile['nyfil'],
+                               header=header, row0=row0, row1=row1, 
+                               jsonfile=jsonfile)
 
-          elif request.form['submit_button'] == 'Vis pseudofil':
-            #fil = data['fil']
-            #katalog = fil['utkatalog']
-            if len(katalog) > 1:
-              filename = katalog +'/'+'pseudo_'+sas_op.getFilename(file)+'.sas7bdat'
-            else:
-              filename = sas_op.getPath(file)+'/'+'pseudo_'+sas_op.getFilename(file)+'.sas7bdat'
-            if isfile(filename):
-              if len(katalog) > 1:
-                pseudo_df = read_file(katalog +'/'+'pseudo_'+sas_op.getFilename(file)+'.sas7bdat')
-              else:
-                pseudo_df = read_file(sas_op.getPath(file)+'/'+'pseudo_'+sas_op.getFilename(file)+'.sas7bdat')
-		
-              p_header = pseudo_df.columns.tolist()
-              p_row = pseudo_df.iloc[0].values.tolist()
-              
-            else:
-              flash('Pseudonymisert fil er ikke laget.', 'warning')
-
-          else:
-            pass
-
-
-        vars = sas_op.getVarnames(sas_op.getFilename(file), sas_op.getPath(file))
-        columns = vars.iloc[:,0].to_list()
-        return render_template('dropbox.html', fil=file, header=header, row=row, p_header=p_header, p_row=p_row, varnames=columns, jsonfile=json.dumps(data, indent=4), pseudofil=pseudofil)
-
-      else:
-        flash(f'Ikke tilgang til {file}', 'warning')
-
-    return render_template('browser.html', folder=st, files=fi)
+def runPseudo(orgfile, newfile, pseudo):
+    pass
 

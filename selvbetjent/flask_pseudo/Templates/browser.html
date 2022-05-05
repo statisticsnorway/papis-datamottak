@@ -16,7 +16,7 @@
   <hr>
   {% for dict_item in folder %}
     {% for key, value in dict_item.items() %}
-      <a href="/files/{{key}}">{{value}}</a><br>
+      <a href="{{key}}">{{value}}</a><br>
     {% endfor %}
   {% endfor %}
   </hr>
@@ -26,7 +26,7 @@
   <hr>
   {% for dict_item in files %}
     {% for key, value in dict_item.items() %}
-      <a href="/files/{{key}}">{{value}}</a><br>
+      <a href="{{key}}">{{value}}</a><br>
     {% endfor %}
   {% endfor %}
   </hr>
