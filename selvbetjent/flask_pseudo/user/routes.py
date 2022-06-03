@@ -4,7 +4,6 @@ from flask_login import login_user, logout_user, current_user, login_required
 from ..models import Log
 from .forms import LoginForm
 from .user import User
-from ..create_app import bcrypt, db
 import paramiko
 import socket
 from flask_login import LoginManager
@@ -21,11 +20,9 @@ def load_user(user_id):
 
 @users.before_app_first_request
 def init_users():
-    current_app.bcrypt = bcrypt
-    current_app.db = db
-    current_app.host = 'localhost'
-    current_app.port = '5222'
-    current_app.timeout = 10
+    if not all(hasattr(current_app, attr) for attr 
+               in ['ssh_host', 'ssh_port', 'ssh_timeout']):
+        raise AttributeError('users: current_app missing variables')
     User.restart()
 
 @users.route('/login', methods=['POST', 'GET'])
@@ -49,9 +46,9 @@ def login():
           #print(f'{current_app.host}, {current_app.port},',
           #      f'{current_app.timeout}, {form.username.data}',
           #      f'{form.password.data}')
-          ssh.connect(current_app.host, 
-                port = current_app.port, 
-                timeout = current_app.timeout, 
+          ssh.connect(current_app.ssh_host, 
+                port = current_app.ssh_port, 
+                timeout = current_app.ssh_timeout, 
                 username = form.username.data, 
                 password = form.password.data)
           sftp = ssh.open_sftp()

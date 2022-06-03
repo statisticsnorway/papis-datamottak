@@ -2,14 +2,13 @@ from flask import Blueprint
 from flask import request, redirect, render_template, json, flash, url_for, current_app
 from flask_login import current_user, logout_user
 from ..models import Log
-from ..create_app import data, db, root
 from stat import S_ISDIR, S_ISREG
 from os.path import split 
 import os
 import io
 from urllib.parse import quote
 import pandas as pd
-import threading
+
 
 main = Blueprint('main', __name__)
 
@@ -17,9 +16,10 @@ main = Blueprint('main', __name__)
 
 @main.before_app_first_request
 def init_main():
-    current_app.data = data
-    current_app.db = db
-    current_app.root = root
+    current_app.pseudoThread = list()
+    if not hasattr(current_app, 'pseudoService'):
+        raise AttributeError('no pseudoService set in main')
+    current_app.pseudoService.start()
 
 @main.route('/index')
 @main.route('/')
@@ -43,7 +43,11 @@ def con_is_active(ssh):
         return True
     except EOFError:
         return False
-
+    
+@main.route('/pseudo')
+def pseudo():
+    return str((current_app.pseudoService.showList(), current_app.pseudoService.error))
+    
 @main.route('/files/')
 @main.route('/files/<path:path>', methods=['POST', 'GET'])
 def files(path = ''):
@@ -83,13 +87,19 @@ def files(path = ''):
             elif S_ISREG(entry.st_mode):
                 #with tempfile.TemporaryFile(mode='w+b', 
                 #            buffering=io.DEFAULT_BUFFER_SIZE) as tmp:
+                    file = None
                     try:
                         file = current_user.sftp.file(path_join, 
                                 mode='r', bufsize=io.DEFAULT_BUFFER_SIZE)
-                        return showFile(path_join, path_split[1], file)
+                        return showFile(path_join, path_split[1], file,
+                                        current_app.pseudoService,
+                                        current_user.sftp)
                     except IOError as ex:
                         flash(f'{path_join} could not be read, IOError {ex}', 'warning')
                         return showDirectory(current_user.lastdir)
+                    finally:
+                        if file:
+                            file.close()
             else:
                 flash(f'{path_join} is neither evaluated to file or directory', 'warning')
                 return showDirectory(current_user.lastdir)
@@ -111,7 +121,7 @@ def showDirectory(listing):
     return render_template('browser.html', folder=[fo], files=[fi])
 
 
-def showFile(fullname, filename, file_object):
+def showFile(fullname, filename, file_object, pseudoService, sftp):
      
     try:
     #encoding='unicode_escape'
@@ -126,7 +136,8 @@ def showFile(fullname, filename, file_object):
         split = os.path.splitext(fullname)
         jsonfile = {'gammelfil': fullname,
                     'nyfil' : split[0] + '_pseudo' + split[1],
-                    'pseudo' : []
+                    'pseudoCol' : [],
+                    'filetype' : 'sas'
                     }
     except Exception as ex:
         return f'Pandas error: {ex}'
@@ -146,16 +157,9 @@ def showFile(fullname, filename, file_object):
         flash('Oppdater konfigurasjonsfil', 'info')
     elif request.form['submit_button'] == 'Pseudonymiser fil':
         flash('Pseudonymiserer fil', 'info')
-        if not getattr(current_app, 'pseudoThread', None):
-            current_app.pseudoThread = set()
-        thread = threading.Thread(target=runPseudo, 
-                                  args =(jsonfile['gammelfil'], 
-                                         jsonfile['nyfil'],
-                                         jsonfile['pseudo']
-                                         ),
-                                  name = 'pseudo' + str(len(set())))
-        current_app.pseudoThread.add(thread)
-        thread.start()
+        file_object.close()
+        pseudoService.add(jsonfile, sftp)
+        #return redirect(url_for('main.pseudo'))
     else:
         return "Should not be reached"
     #varsx = sas_op.getVarnames(sas_op.getFilename(filename), sas_op.getPath(filename))
@@ -163,7 +167,4 @@ def showFile(fullname, filename, file_object):
     return render_template('dropbox.html', orgfil=jsonfile['gammelfil'], nyfil=jsonfile['nyfil'],
                                header=header, row0=row0, row1=row1, 
                                jsonfile=jsonfile)
-
-def runPseudo(orgfile, newfile, pseudo):
-    pass
 

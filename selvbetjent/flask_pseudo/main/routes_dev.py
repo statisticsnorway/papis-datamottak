@@ -7,6 +7,8 @@ dev = Blueprint('development',__name__)
 
 @dev.route('/shutdown', methods=['GET', 'POST'])
 def shutdown():
+    if hasattr(current_app, 'pseudoService'):
+        current_app.pseudoService.shutdown()
     shutdown_server()
     return 'Server shutting down...'
 
@@ -34,6 +36,7 @@ def user_looker(variable = None):
         string = str([('Key:',key, 'Type:', type(val), 'Val:', val)
                  for key, val in vars(getattr(current_app, variable)).items()])
     return f'Variable: {variable}, Result: {string}'
+
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
     if func is None:
