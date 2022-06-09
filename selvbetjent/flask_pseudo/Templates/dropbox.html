@@ -30,42 +30,39 @@
  <div class="container">
     <table class="table table-hover table-sm">
     <form method="POST" action="" >
-  	<thead>
-    		<tr>
+  	<td>
+		<tr>
 			{% for h in header %}
 			<th scope="col">{{ h }}</th>
 			{% endfor %}
 		</tr>
-	</thead>
-	<tbody>
-    		<tr>
-      			{% for c in row %}
+	</td>
+	<body>
+		<tr>
+      		{% for c in row %}
 			<td>{{ c }}</td>
 			{% endfor %}
 		</tr>
 		<tr>
-			
 			{% for h in header %}
-			<td>
-				<div class="form-check form-switch">
-  				<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" value="{{h}}" name="pseudo">
-  				<label class="form-check-label" for="flexSwitchCheckDefault">Pseudo?</label>
-			</td>
+				<td>
+					<div class="form-check form-switch">
+  					<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" value="{{h}}" name="pseudo">
+  					<label class="form-check-label" for="flexSwitchCheckDefault">Pseudo?</label>
+				</td>
 			{% endfor %}
 		</tr>
 		<tr>
 			{% for h in header %}
-			<td>
-				<div class="form-check form-switch">
-  				<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" value="{{h}}" name="delete">
-  				<label class="form-check-label" for="flexSwitchCheckDefault">Slett?</label>
-			</td>
+				<td>
+					<div class="form-check form-switch">
+  					<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" value="{{h}}" name="delete">
+  					<label class="form-check-label" for="flexSwitchCheckDefault">Slett?</label>
+				</td>
 			{% endfor %}
 		</tr>
-			
-  			
-	</tbody>
-    </table>
+	</body>
+</table>
     <input type="submit" class="btn btn-outline-success my-2 my-sm-0" name="submit_button" value="Oppdater konfigurasjonsfil">
     </form>
 </div>

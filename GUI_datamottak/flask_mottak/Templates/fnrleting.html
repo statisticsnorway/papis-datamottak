@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title%}Leverandor{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+
+ <div class="container">
+     <div class="content-section">
+     <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class = "form-group">
+        <legend class = "border-bottom mb-4">{{ legend }}</legend>
+
+        <div class = "form-group">
+	      {{ form.fnrleting.label(class="form-control-label") }}
+	      {% if form.fnrleting.errors %}
+	  	    {{ form.fnrleting(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.fnrleting.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.fnrleting(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+      </fieldset>
+      <div class = "form-group">
+        {{ form.submit(class="btn btn-outline-info") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

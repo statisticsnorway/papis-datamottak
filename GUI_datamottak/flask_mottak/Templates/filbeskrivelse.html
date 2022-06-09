@@ -35,16 +35,16 @@
 	    </div>
 
 	    <div class = "form-group">
-	      {{ form.leveranse.label(class="form-control-label") }}
-	      {% if form.leveranse.errors %}
-	  	    {{ form.leveranse(class="form-control form-control-lg is-invalid") }}
+	      {{ form.data_leveranse.label(class="form-control-label") }}
+	      {% if form.data_leveranse.errors %}
+	  	    {{ form.data_leveranse(class="form-control form-control-lg is-invalid") }}
 	    	<div class="invalid-feedback">
-	    	{% for error in form.leveranse.errors %}
+	    	{% for error in form.data_leveranse.errors %}
 	      		<span>{{ error }}</span>
 	    	{% endfor %}
 	    	</div>
 	      {% else %}
-	  	    {{ form.leveranse(class="form-control form-control-lg", readonly=true) }}
+	  	    {{ form.data_leveranse(class="form-control form-control-lg", readonly=true) }}
 	      {% endif %}
 	    </div>
 
@@ -60,6 +60,34 @@
 	    {% else %}
 	  	  {{ form.kort_lev(class="form-control form-control-lg") }}
 	    {% endif %}
+	    </div>
+
+        <div class = "form-group">
+	    {{ form.filnavn.label(class="form-control-label") }}
+	      {% if form.filnavn.errors %}
+	  	  {{ form.filnavn(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.filnavn.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.filnavn(class="form-control form-control-lg") }}
+			{% endif %}
+	    </div>
+
+		<div class = "form-group">
+	    {{ form.fil_mottatt.label(class="form-control-label") }}
+	      {% if form.fil_mottatt.errors %}
+	  	  {{ form.fil_mottatt(class="form-control form-control-lg is-invalid") }}
+			<div class="invalid-feedback">
+	    	{% for error in form.fil_mottatt.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	     {% else %}
+	  	   {{ form.fil_mottatt(class="form-control form-control-lg") }}
+			{% endif %}
 	    </div>
 
       </fieldset>

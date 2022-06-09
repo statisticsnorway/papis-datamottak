@@ -2,7 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import SubmitField, StringField, SelectField, HiddenField
 from wtforms.validators import DataRequired, Length, ValidationError, Email
 
-from flask_mottak.models import Dataleveranse, Leverandor
+from flask_mottak.models import Dataleveranse
 
 
 class SelectLeverandorForm(FlaskForm):
@@ -20,7 +20,7 @@ class SelectLeveranseForm(FlaskForm):
 
 class RegistrationForm(FlaskForm):
     leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(min=3, max=100)])
-    leverandor_kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired()])
+    kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired()])
     mot_seksjon = StringField('Mottakende seksjon', validators=[DataRequired(), Length(min=0,max=4)])
     kontakt_seksjon = StringField('Kontakt mottakende seksjon', validators=[Length(max=200)])
     kontaktinfo_seksjon = StringField('Kontaktinfo mottakende seksjon', validators=[DataRequired(), Email()])
@@ -37,12 +37,12 @@ class RegistrationForm(FlaskForm):
         leveranse = Dataleveranse.query.filter_by(leveranse=leveranse.data).first()
 
         if leveranse:
-            raise ValidationError(f'Dataleveranse er allerede registrert. Dataleveranse er knyttet til kortnavnet {leveranse.leverandor_kort_lev}')
+            raise ValidationError(f'Dataleveranse er allerede registrert. Dataleveranse er knyttet til kortnavnet {leveranse.kort_lev}')
 
 
 class UpdateDataleveranseForm(FlaskForm):
     leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(min=3, max=100)])
-    leverandor_kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired()])
+    kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired()])
     mot_seksjon = StringField('Mottakende seksjon', validators=[DataRequired(), Length(min=0, max=4)])
     kontakt_seksjon = StringField('Kontakt mottakende seksjon', validators=[Length(max=200)])
     kontaktinfo_seksjon = StringField('Kontaktinfo mottakende seksjon', validators=[DataRequired(), Email()])

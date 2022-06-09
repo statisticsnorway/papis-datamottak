@@ -25,7 +25,7 @@ def velg_leverandor():
 
 @dataleveranser.route('/velg_dataleveranse/<string:kort_lev>', methods=['POST', 'GET'])
 def velg_leveranse(kort_lev):
-    leveranser = Dataleveranse.query.filter_by(leverandor_kort_lev=kort_lev).all()
+    leveranser = Dataleveranse.query.filter_by(kort_lev=kort_lev).all()
     alle_leveranser = [lev.leveranse for lev in leveranser]
     leverandor = Leverandor.query.get(kort_lev)
     min_leverandor = leverandor.kort_lev
@@ -57,7 +57,7 @@ def register(kort_lev):
     if form.validate_on_submit():
         leverandor = Leverandor.query.get(kort_lev)
         min_leverandor = leverandor.kort_lev
-        leveranse = Dataleveranse(leveranse=form.leveranse.data, leverandor_kort_lev=min_leverandor,
+        leveranse = Dataleveranse(leveranse=form.leveranse.data, kort_lev=min_leverandor,
                                   mot_seksjon=form.mot_seksjon.data,
                                   kontakt_seksjon=form.kontakt_seksjon.data, kontaktinfo_seksjon=form.kontaktinfo_seksjon.data,
                                   kontakt_lev=form.kontakt_lev.data, kontaktinfo_lev=form.kontaktinfo_lev.data,
@@ -65,18 +65,20 @@ def register(kort_lev):
                                   )
         db.session.add(leveranse)
         db.session.commit()
-        flash(f'Leveranse opprettet for {form.leverandor_kort_lev.data}!', 'success')
+        flash(f'Leveranse opprettet for {form.kort_lev.data}!', 'success')
         return redirect(url_for('leverandorer.view'))#View bør flyttes til main?!
 
     elif request.method == 'GET':
-        form.leverandor_kort_lev.data = kort_lev
-        form.leverandor_kort_lev(disabled=True)
+        form.kort_lev.data = kort_lev
+        form.kort_lev(disabled=True)
 
     return render_template('dataleveranse.html', title='Registrer', form=form, legend='Registrer dataleveranse')
 
 @dataleveranser.route('/dataleveranse/<string:leveranse>/<string:kort_lev>/update', methods=['POST', 'GET'])
 def update_leveranse(kort_lev, leveranse):
-    dataleveransen = Dataleveranse.query.get(leveranse)
+    print(kort_lev, leveranse)
+    dataleveransen = Dataleveranse.query.get([leveranse, kort_lev])
+    print(dataleveransen)
     #dataleveranser = Dataleveranse.query.filter_by(leverandor_kort_lev=kort_lev).first_or_404(description=f'Ingen dataleveranse knyttet til {kort_lev}')
     #alle_kortnavn = [kn.leverandor_kort_lev for kn in db.session.query(Dataleveranse.leverandor_kort_lev).all()]
     #alle_kortnavn.remove(dataleveranser.leverandor_kort_lev)
@@ -89,7 +91,7 @@ def update_leveranse(kort_lev, leveranse):
         min_leverandor = leverandor.kort_lev
 
         dataleveransen.leveranse = leveranse
-        dataleveransen.leverandor_kort_lev = min_leverandor
+        dataleveransen.kort_lev = min_leverandor
         dataleveransen.mot_seksjon = form.mot_seksjon.data
         dataleveransen.kontakt_seksjon = form.kontakt_seksjon.data
         dataleveransen.kontaktinfo_seksjon = form.kontaktinfo_seksjon.data
@@ -103,7 +105,7 @@ def update_leveranse(kort_lev, leveranse):
         return redirect(url_for('leverandorer.view'))
 
     elif request.method == 'GET':
-        form.leverandor_kort_lev.data = kort_lev
+        form.kort_lev.data = kort_lev
         form.leveranse.data = leveranse
         form.mot_seksjon.data = dataleveransen.mot_seksjon
         form.kontakt_seksjon.data = dataleveransen.kontakt_seksjon

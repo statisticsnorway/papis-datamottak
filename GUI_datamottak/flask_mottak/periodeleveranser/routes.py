@@ -26,7 +26,7 @@ def velg_leverandor():
 
 @periodeleveranser.route('/velg_periodeleveranse/<string:kort_lev>', methods=['POST', 'GET'])
 def velg_leveranse(kort_lev):
-    leveranser = Dataleveranse.query.filter_by(leverandor_kort_lev=kort_lev).all()
+    leveranser = Dataleveranse.query.filter_by(kort_lev=kort_lev).all()
     alle_leveranser = [lev.leveranse for lev in leveranser]
     leverandor = Leverandor.query.get(kort_lev)
     min_leverandor = leverandor.kort_lev
@@ -52,17 +52,8 @@ def velg_leveranse(kort_lev):
 
 @periodeleveranser.route('/velg_periodeleveranse/<string:kort_lev>/<string:leveranse>', methods=['POST', 'GET'])
 def velg_periodeleveranse(kort_lev, leveranse):
-    leveranser = Dataleveranse.query.filter_by(leverandor_kort_lev=kort_lev).all()
-    alle_leveranser = [lev.leveranse for lev in leveranser]
-    leverandor = Leverandor.query.get(kort_lev)
-    min_leverandor = leverandor.kort_lev
-
-
-    periodeleveranser = Periodeleveranse.query.filter_by(data_leveranse=leveranse)
+    periodeleveranser = Periodeleveranse.query.filter_by(leveranse=leveranse)
     alle_periodeleveranser = [pl.periode for pl in periodeleveranser]
-    dataleveranse = Dataleveranse.query.get(leveranse)
-    min_dataleveranse = dataleveranse.leveranse
-
 
     form = SelectPeriodeForm()
     form.periode.choices = [plv for plv in alle_periodeleveranser]
@@ -72,16 +63,17 @@ def velg_periodeleveranse(kort_lev, leveranse):
     if form.validate_on_submit():
         leveranse = form.leveranse.data
         periode = form.periode.data
+        kort_lev = form.kort_lev.data
 
-        return redirect(url_for('periodeleveranser.update_leveranse', leveranse=leveranse, periode=periode))
+        return redirect(url_for('periodeleveranser.update_leveranse', leveranse=leveranse, periode=periode, kort_lev=kort_lev))
 
     elif request.method == 'GET':
-        form.kort_lev.data = min_leverandor
+        form.kort_lev.data = kort_lev
         form.kort_lev(disabled=True)
-        form.leveranse.data = min_dataleveranse
+        form.leveranse.data = leveranse
         form.leveranse(disabled=True)
 
-    return render_template('velg_periodeleveranse.html', title='Periodeleveranse', form=form, kort_lev=min_leverandor, dataleveranse=min_dataleveranse, legend='Registrer periodeleveranse')
+    return render_template('velg_periodeleveranse.html', title='Periodeleveranse', form=form, kort_lev=kort_lev, dataleveranse=leveranse, legend='Registrer periodeleveranse')
 
 
 
@@ -91,59 +83,60 @@ def register(kort_lev, dataleveranse):
     form = RegistrationForm()
 
     if form.validate_on_submit():
-        periode = Periodeleveranse(periode=form.periode.data, data_leveranse=form.data_leveranse.data,
-                                   kort_lev=form.kort_lev.data, forventet_dato=form.forventet_dato.data,
-                                   mottatt_dato=form.mottatt_dato.data)
+        periode = Periodeleveranse(periode=form.periode.data, leveranse=form.leveranse.data,
+                                   kort_lev=form.kort_lev.data)
         db.session.add(periode)
         db.session.commit()
-        flash(f'Periode opprettet for {form.kort_lev.data} - {form.data_leveranse.data}!', 'success')
+        flash(f'Periode opprettet for {form.kort_lev.data} - {form.leveranse.data}!', 'success')
         return redirect(url_for('leverandorer.view'))#View bør flyttes til main?!
 
     elif request.method == 'GET':
-        form.data_leveranse.data = dataleveranse
-        form.data_leveranse(disabled=True)
+        form.leveranse.data = dataleveranse
+        form.leveranse(disabled=True)
         form.kort_lev.data = kort_lev
         form.kort_lev(disabled=True)
 
     return render_template('periodeleveranse.html', title='Registrer', form=form, legend='Registrer periodeleveranse')
 
-@periodeleveranser.route('/periodeleveranse/<string:periode>/<string:leveranse>/update', methods=['POST', 'GET'])
-def update_leveranse(periode, leveranse):
-    dataleveransen = Dataleveranse.query.get(leveranse)
-    periodeleveranser = dataleveransen.periodeleveranser
+
+@periodeleveranser.route('/periodeleveranse/<string:periode>/<string:leveranse>/<string:kort_lev>/update', methods=['POST', 'GET'])
+def update_leveranse(periode, leveranse, kort_lev):
+    perioden = Periodeleveranse.query.get([periode, leveranse, kort_lev])
+
+    periodeleveranser = Periodeleveranse.query.filter_by(leveranse=leveranse)
+    alle_periodeleveranser = [pl.periode for pl in periodeleveranser]
+
     periodeleveransen = ''
     andre_periodeleveranser = []
-    for pl in periodeleveranser:
-        if pl.periode == periode:
+    for pl in alle_periodeleveranser:
+        if pl == periode:
             periodeleveransen = pl
         else:
             andre_periodeleveranser.append(pl)
 
     form = UpdatePeriodeleveranseForm()
+    form.periode.choices = [plv for plv in alle_periodeleveranser]
 
+    print("periode før update, ", perioden)
     if form.validate_on_submit():
-        periodeleveransen.periode = form.periode.data
-        periodeleveransen.data_leveranse = form.data_leveranse.data
-        periodeleveransen.kort_lev = form.kort_lev.data
-        periodeleveransen.forventet_dato = form.forventet_dato.data
-        periodeleveransen.mottatt_dato = form.mottatt_dato.data
+        print("perioden", perioden)
+        perioden.periode = form.periode.data
+        #perioden.data_leveranse = form.leveranse.data
+        #perioden.kort_lev = form.kort_lev.data
 
         for pl in andre_periodeleveranser:
-            if pl.periode == form.periode.data:
-                flash(f'Periode er allerede registrert på denne dataleveransen- {pl.data_leveranse}', 'warning')
-                return redirect(url_for('periodeleveranser.update_leveranse', leveranse=leveranse, periode=periode))
+            if pl == form.periode.data:
+                flash(f'Periode er allerede registrert på denne dataleveransen- {leveranse}', 'warning')
+                return redirect(url_for('periodeleveranser.update_leveranse', leveranse=leveranse, periode=periode, kort_lev=kort_lev))
 
         db.session.commit()
-        flash(f'Periodeleveranse oppdatert for: {form.data_leveranse.data} - {form.periode.data}!', 'success')
+        flash(f'Periodeleveranse oppdatert for: {form.leveranse.data} - {form.periode.data}!', 'success')
         return redirect(url_for('leverandorer.view'))
 
     elif request.method == 'GET':
         form.periode.data = periode
-        form.data_leveranse.data = leveranse
-        form.kort_lev.data = periodeleveransen.kort_lev
-        form.forventet_dato.data = periodeleveransen.forventet_dato
-        form.mottatt_dato.data = periodeleveransen.mottatt_dato
-
+        form.leveranse.data = leveranse
+        form.kort_lev.data = kort_lev
 
     return render_template('periodeleveranse.html', title='Oppdater informasjon om periodeleveranse',
                            form=form, legend='Oppdater informasjon om periodeleveranse')

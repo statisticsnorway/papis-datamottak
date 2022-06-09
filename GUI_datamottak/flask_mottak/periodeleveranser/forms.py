@@ -15,7 +15,7 @@ class SelectLeveranseForm(FlaskForm):
     kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired()])
     leveranse = SelectField('Dataleveranse',  validate_choice=False)
 
-    submit = SubmitField('Hent dataleveranse')
+    submit = SubmitField('Velg dataleveranse')
 
 
 class SelectPeriodeForm(FlaskForm):
@@ -27,26 +27,19 @@ class SelectPeriodeForm(FlaskForm):
 
 class RegistrationForm(FlaskForm):
     periode = StringField('Periode', validators=[DataRequired(), Length(max=20)])
-    data_leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(max=100)])
+    leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(max=100)])
     kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired(), Length(min=0,max=6)])
-    forventet_dato = StringField('Forventet mottaksdato', validators=[DataRequired(), Length(max=20)])
-    mottatt_dato = StringField('Faktisk mottaksdato', validators=[DataRequired(), Length(max=20)])
+    #forventet_dato = StringField('Forventet mottaksdato', validators=[DataRequired(), Length(max=20)])
 
     submit = SubmitField('Registrer periodeleveranse')
 
 
-#    def validate_periode(self, periode):
-#        periode = Periodeleveranse.query.filter_by(periode=periode.data).first()
-#
-#        if periode:
-#            raise ValidationError(f'Periode er allerede registrert. Perioden er knyttet til dataleveransen {periode.data_leveranse}')
-
 
 class UpdatePeriodeleveranseForm(FlaskForm):
     periode = StringField('Periode', validators=[DataRequired(), Length(max=20)])
-    data_leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(max=100)])
-    kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired(), Length(min=0, max=6)])
-    forventet_dato = StringField('Forventet mottaksdato', validators=[DataRequired(), Length(max=20)])
-    mottatt_dato = StringField('Faktisk mottaksdato', validators=[DataRequired(), Length(max=20)])
+    leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(max=100)])
+    kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired(), Length(min=3, max=6)])
+    #forventet_dato = StringField('Forventet mottaksdato', validators=[DataRequired(), Length(max=20)])
+    #mottatt_dato = StringField('Faktisk mottaksdato', validators=[DataRequired(), Length(max=20)])
 
-    submit = SubmitField('Oppdater')
+    submit = SubmitField('Oppdater periodeleveranse')

@@ -1,0 +1,8 @@
+*/GUI_datamottak/conf/
+**/__pycache__/
+*/flask_mottak/mottak.db
+/test*
+/Upload*
+/flask_test*
+*.json
+**/.idea/

@@ -1,9 +1,16 @@
-from flask_mottak import create_app
+from flask_mottak import create_app, db
 
 app = create_app()
+db.create_all(app=create_app())
+app.app_context().push()
+#db.session.commit()
+
+#with app.app_context():
+#    db.create_all()
+#    db.create_all(app=create_app())
+#    db.session.commit()
 
 if __name__ == "__main__":
-    print('Navigate to http://10.32.10.70:5050/')
-    app.run(host='0.0.0.0',port=5050,debug=True,threaded=True)
+    app.run(host='0.0.0.0',port=5000,debug=True,threaded=True)
 
     

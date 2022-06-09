@@ -4,6 +4,7 @@ from pathlib import Path
 from flask import Blueprint
 from flask import request, redirect, render_template, json, flash, url_for
 from flask_pseudo.main.utils import *
+from flask_pseudo.main.sas_operasjoner import *
 from flask_pseudo.models import Log
 from flask_login import current_user
 
@@ -15,7 +16,7 @@ main = Blueprint('main', __name__)
 with open('config_mal.json', 'r') as myfile:
   data=json.loads(myfile.read())
 
-#sas_op = SAS_Operasjoner()
+sas_op = SAS_Operasjoner()
 
  
 
@@ -36,10 +37,8 @@ def search():
 
 @main.route('/files/')
 @main.route('/files/<path:path>', methods=['POST', 'GET'])
-def about(path = ''):
+def about(path=''):
     root = '/ssb/'
-    
-    file = normpath(join(root, path))
 
     file = getPath(path) if path != '' else normpath(join(root,path))
 
@@ -77,26 +76,20 @@ def about(path = ''):
     elif isfile(file): 
       if os.access(file, os.R_OK):
         flash(f'File {file}', 'info')
-        row = ''
         p_row = ''
         pseudofil = ''
-        header = ''
         p_header = ''
         df = read_file(file)
         header = df.columns.tolist()
         row = df.iloc[0].values.tolist()
-        pseudo_vars=''
-        delete_vars=''
         katalog=''
-        fil=''
-        
+
         if request.method == 'POST':
           if request.form['submit_button'] == 'Oppdater konfigurasjonsfil':
             pseudo_vars = request.form.getlist('pseudo')
             delete_vars = request.form.getlist('delete')
             update_json(sas_op, file, data, pseudo_vars, delete_vars, '')
-            fil = data['fil']
-          
+
           elif request.form['submit_button'] == 'katalog':
             root = '/ssb/'
             path = request.form['folder']
@@ -157,7 +150,7 @@ def about(path = ''):
 
 
         vars = sas_op.getVarnames(sas_op.getFilename(file), sas_op.getPath(file))
-        columns = vars.iloc[:,0].to_list()
+        columns = vars.iloc[:, 0].to_list()
         return render_template('dropbox.html', fil=file, header=header, row=row, p_header=p_header, p_row=p_row, varnames=columns, jsonfile=json.dumps(data, indent=4), pseudofil=pseudofil)
 
       else:

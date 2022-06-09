@@ -1,13 +1,17 @@
-import os
+import json
+
+with open('/conf/config.json') as config_file:
+    config = json.load(config_file)
+
+#TEST lokalt
+#with open('./conf/config.json') as config_file:
+#    config = json.load(config_file)
 
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///mottak.db'
+    SQLALCHEMY_DATABASE_URI = config.get('SQLALCHEMY_DATABASE_URI')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    # maximum filesize in megabytes
-    # file_mb_max = 100
-    # encryption kew
-    SECRET_KEY = 'key'
+    SECRET_KEY = config.get('SECRET_KEY')
     # list of allowed extensions
-    EXTENSIONS = set(['sas7bdat', 'SAS7BDAT'])
-    # extensions = set(['txt','sas7bdat','SAS7BDAT','json', 'csv'])
+    #EXTENSIONS = set(['sas7bdat', 'SAS7BDAT'])
+    EXTENSIONS = config.get('EXTENSIONS')
