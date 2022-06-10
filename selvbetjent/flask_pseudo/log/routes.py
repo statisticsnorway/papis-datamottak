@@ -1,11 +1,9 @@
 from flask import Blueprint
-from flask import request, render_template, flash, current_app
-from flask_login import login_user, logout_user, current_user, login_required
-from flask_pseudo.models import Log
+from flask import request, render_template
+from flask_login import login_required
+from ..models import Log
 
 logs = Blueprint('logs', __name__)
-
-
 
 @logs.route('/log', methods=['POST', 'GET'])   
 @login_required

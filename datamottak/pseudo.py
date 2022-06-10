@@ -6,7 +6,8 @@ Created on Thu Mar 18 14:34:56 2021
 """
 
 from papis_service.common.configureServerEnv import ConfigureServerEnv
-from .sas.pseudosas7bdat import PseudoSas7bdat
+from datamottak.sas import Ps
+
 
 class Pseudo:
   _similar = {"AUTH" : "NONE", "AUTH_LOCATION" : None,
@@ -60,7 +61,7 @@ class Pseudo:
   
   #Returns a temporary file
   def performPseudoSasTemp(self, filename, varlist, encrypt = True, tempDir=None):
-    file = PseudoSas7bdat(filename)
+    file = Ps(filename)
     temp = file.pseudo(varlist)
     file.close()
     return temp

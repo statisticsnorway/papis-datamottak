@@ -6,19 +6,23 @@ import tempfile
 
 
 class PseudoSas7bdat (SAS7BDAT):
-    def __init__(self, path, log_level=logging.INFO,
+    def __init__(self, path="dummy.sas7bdat", log_level=logging.INFO,
                  extra_time_format_strings=None,
                  extra_date_time_format_strings=None,
                  extra_date_format_strings=None,
-                 skip_header=False,
+                 skip_header=True,
                  encoding='utf8',
                  encoding_errors='ignore',
                  align_correction=True,
                  fh=None, strip_whitespace_from_strings=False):
         
-        if (not fh) and (not os.path.isfile(path)):
-            raise FileNotFoundError('File not found')
-        fh = fh or open(path, 'rb')
+        #Making shure that fh is set before calling super
+        if not fh:
+            if path == None or (not os.path.isfile(path)):
+                raise FileNotFoundError('Filename not found and no filehandle')
+            else:
+                fh = open(path, 'rb')
+        fh.seek(0)
 
         super().__init__(path, log_level, 
                                  extra_time_format_strings,
@@ -27,16 +31,14 @@ class PseudoSas7bdat (SAS7BDAT):
                                  skip_header, encoding,
                                  encoding_errors, align_correction,
                                  fh, strip_whitespace_from_strings)
-        
-        if len(self.columns) == 0:
-            self.logger.waring('no columns found')
+#        if len(self.columns) == 0:
+#            self.logger.waring('no columns found')
         if self.properties.compression:
             self.logger.error(
                         'cannot use %s compression', 
                         self.properties.compression
                     )
-
-
+            raise IOError('Compression not supported')
         self.filename = path
         
     @classmethod
@@ -54,34 +56,57 @@ class PseudoSas7bdat (SAS7BDAT):
                        col.type, col.length])
         return li
     
-    def checkColomnNames(self, columnNames): #True if 
-        for col in columnNames:
-            if not col in self.column_names:
-                return False
-        return True
+    def pseudo(self, pseudoColumns, cache, targetFileObject, encrypt = True):
+        try:
+            variables = self.getColumnsSet(pseudoColumns)
+            if encrypt:
+                dictionary = cache.encryptSet(variables)
+            else:
+                dictionary = cache.decryptSet(variables)
+            self.fileModify(pseudoColumns, dictionary, targetFileObject)
+            return None
+        except Exception as ex:
+            raise ex
+            
+            
+                
     
-    def pseudo(self, pseudoColumns,
-                 encrypt=True,
-                 suffix='tmp',
-                 tempDir = tempfile.gettempdir(),
-                 deleteTemp = False):
-        if self.properties.compression:
-            raise IOError('Compression not supported')
+    def getColumnsSet(self, columns):
+        for col in columns:
+            if not col in self.column_names:
+                raise ValueError('pseudonym not found')
+        generator = self.readlines()
+        if self.skip_header == False:
+            next(generator)
+        column_numbers = [x for x in range(len(self.column_names)) 
+                          if self.column_names[x] in columns]
+        return {x[n] for x in generator for n in column_numbers}
+    
+    def fileModify(self, pseudoColumns, modDict, 
+               targetFileObject):
+
+        #modDict = dictionary with all the modifications
         
         for col in pseudoColumns:
             if not col in self.column_names:
                 raise ValueError('pseudonym not found')
-                
-        self.encrypt = encrypt
-        self.tempFile = tempfile.NamedTemporaryFile(suffix=suffix, 
-                                                    dir = tempDir, 
-                                                    delete = deleteTemp)
-        self.copyFile(self._file, self.tempFile)
-        self._pseudoLines(pseudoColumns, encrypt)
-        self.tempFile.close()
-        return self.tempFile.name
         
-    def _pseudoLines(self, pseudoColumns, encrypt):
+        for x, y in modDict.items():
+            arX = bytearray(x.encode(self.encoding, self.encoding_errors))
+            arY = bytearray(y.encode(self.encoding, self.encoding_errors))
+            if len(arX) != len(arY):
+                raise ValueError(f'modDict length does not match for {x}:{y}')
+                            
+            
+        #self.tempFile = tempfile.NamedTemporaryFile(suffix=suffix, 
+        #                                            dir = tempDir, 
+        #                                           delete = delete)
+        self.tempFile = targetFileObject
+        self.copyFile(self._file, targetFileObject)
+        self._pseudoLines(pseudoColumns, modDict)
+        return targetFileObject
+        
+    def _pseudoLines(self, pseudoColumns, modDict):
         
         bit_offset = self.header.PAGE_BIT_OFFSET
         subheader_pointer_length = self.header.SUBHEADER_POINTER_LENGTH
@@ -138,7 +163,7 @@ class PseudoSas7bdat (SAS7BDAT):
                     self.current_row = self._process_byte_array_with_data2(
                         offset,
                         self.properties.row_length,
-                        pseudoColumns
+                        pseudoColumns, modDict
                     )
                 except:
                     self.logger.exception(
@@ -159,7 +184,7 @@ class PseudoSas7bdat (SAS7BDAT):
                     bit_offset + self.header.SUBHEADER_POINTERS_OFFSET +
                     current_row_on_page_index *
                     self.properties.row_length,
-                    self.properties.row_length, pseudoColumns
+                    self.properties.row_length, pseudoColumns, modDict
                 )
                 current_row_on_page_index += 1
                 if current_row_on_page_index == self.current_page_block_count:
@@ -219,7 +244,7 @@ class PseudoSas7bdat (SAS7BDAT):
     
     def _process_byte_array_with_data2(self, offset, 
                                       length, 
-                                      pseudoColumns):
+                                      pseudoColumns, modDict):
         row_elements = []
         if self.properties.compression and length < self.properties.row_length:
             decompressor = self.DECOMPRESSORS.get(
@@ -246,19 +271,17 @@ class PseudoSas7bdat (SAS7BDAT):
 
             readval = self._read_val('s', temp, length)
             decode = readval.decode(self.encoding, self.encoding_errors)
-            if self.encrypt:
-                decode = ''.join([encrypt.get(x, x) for x in decode])
-            else:
-                decode = ''.join([decrypt.get(x, x) for x in decode])
-            decode = bytearray(decode.encode(self.encoding, self.encoding_errors))
-            source[start:end] = decode
+            encode = modDict.get(decode)
+            if encode == None:
+                raise ValueError (f'dictionary value for {decode} not found')
+            encode = bytearray(encode.encode(self.encoding, self.encoding_errors))
+            source[start:end] = encode
             self.cached_page.modified = True
             #row_elements.append(decode)
             #row_elements.append(temp)
             #row_elements.append(len(decode))
             #row_elements.append(len(temp))
             
-            #print(row_elements)
             #return row_elements
 ##############         
             if self.columns[i].type == 'number':
@@ -308,12 +331,7 @@ class PseudoSas7bdat (SAS7BDAT):
         cache = self._file.read(page_length)
         end = self._file.tell()
         return Cached_page(cache, start, end)
-    
-import string
-fullstring = string.ascii_letters + string.digits
-encrypt = {fullstring[x] : fullstring[(x+1)%len(fullstring)] for x in range(len(fullstring))}
-decrypt = {fullstring[x] : fullstring[(x-1)%len(fullstring)] for x in range(len(fullstring))}
-    
+  
 class Cached_page():
     def __init__(self, cache, start, end):
         self.cache = bytearray(cache)

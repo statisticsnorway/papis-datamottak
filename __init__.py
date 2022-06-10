@@ -9,7 +9,7 @@ Created on Thu Mar  4 16:16:32 2021
 
 __version__='0.0.1'
 __author__= 'Olaf Espeland Hansen'
-__all__ = []
+#__all__ = []
 
 
 
