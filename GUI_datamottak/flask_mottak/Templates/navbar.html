@@ -26,6 +26,23 @@
           <a class="nav-link" href="{{url_for('periodeleveranser.velg_leverandor') }}">Registrere/endre periodeleveranse</a>
         </li>
       </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item active">
+          <a class="nav-link" href="{{url_for('fil.velg_leverandor') }}">Filmottak</a>
+        </li>
+      </ul>
+      <!--ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDarkDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Dropdown
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDarkDropdownMenuLink">
+            <li><a class="dropdown-item" href="#">Action</a></li>
+            <li><a class="dropdown-item" href="#">Another action</a></li>
+            <li><a class="dropdown-item" href="#">Something else here</a></li>
+          </ul>
+        </li>
+      </ul-->
       <form method="POST" action="{{url_for('main.search') }}" class="d-flex">
         <input class="form-control me-2" type="search" name="folder"  placeholder="<Kortnavn dataleverandør>" aria-label="Search">
         <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Oppdater leverandør</button>

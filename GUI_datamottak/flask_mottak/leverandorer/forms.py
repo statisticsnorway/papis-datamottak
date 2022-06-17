@@ -1,8 +1,14 @@
 from flask_wtf import FlaskForm
-from wtforms import SubmitField, StringField
+from wtforms import SubmitField, StringField, SelectField
 from wtforms.validators import DataRequired, Length, ValidationError
 
 from flask_mottak.models import Leverandor, Dataleveranse
+
+
+class SelectLeverandorForm(FlaskForm):
+    kort_lev = SelectField('Hent dataleverandør',  validate_choice=False)
+
+    submit = SubmitField('Hent dataleverandør')
 
 
 class RegistrationForm(FlaskForm):

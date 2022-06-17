@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title%}Leverandor{% endblock %}
+{% block content %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+      <!-- <strong>Title</strong> --> {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+
+ <div class="container">
+     <div class="content-section">
+     <form method="POST" action="">
+      {{ form.hidden_tag() }}
+      <fieldset class = "form-group">
+        <legend class = "border-bottom mb-4">{{ legend }}</legend>
+
+		<div class = "form-group">
+	      {{ form.fodselsnr.label(class="form-control-label") }}
+	      {% if form.fodselsnr.errors %}
+	  	    {{ form.fodselsnr(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.fodselsnr.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.fodselsnr(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+        <div class = "form-group">
+	      {{ form.sep.label(class="form-control-label") }}
+	      {% if form.sep.errors %}
+	  	    {{ form.sep(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.sep.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.sep(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+        <div class = "form-group">
+	      {{ form.header.label(class="form-control-label") }}
+	      {% if form.header.errors %}
+	  	    {{ form.header(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.header.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.header(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+        <div class = "form-group">
+	      {{ form.innlprog.label(class="form-control-label") }}
+	      {% if form.innlprog.errors %}
+	  	    {{ form.innlprog(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.innlprog.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.innlprog(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+        <div class = "form-group">
+	      {{ form.bruk_navn.label(class="form-control-label") }}
+	      {% if form.bruk_navn.errors %}
+	  	    {{ form.bruk_navn(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.bruk_navn.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.bruk_navn(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+		<div class = "form-group">
+	      {{ form.filstamme.label(class="form-control-label") }}
+	      {% if form.filstamme.errors %}
+	  	    {{ form.filstamme(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.filstamme.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.filstamme(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+      </fieldset>
+      <div class = "form-group">
+        {{ form.submit(class="btn btn-outline-info") }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

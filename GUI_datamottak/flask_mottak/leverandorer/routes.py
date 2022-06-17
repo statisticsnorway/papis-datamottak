@@ -10,7 +10,7 @@ leverandorer = Blueprint('leverandorer', __name__)
 
 @leverandorer.route('/leverandor', methods=['POST', 'GET'])
 def register():
-    #if current_user.is_authenticated:
+    #if current_user.is_authenticated:__init__.py
     #    return redirect(url_for('main.index'))
 
     form = RegistrationForm()
