@@ -39,7 +39,7 @@ def login():
       
     form = LoginForm()
     if form.validate_on_submit():
-      print ('form.validate')
+      #print ('form.validate')
       ssh = paramiko.SSHClient()
       ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
       try:

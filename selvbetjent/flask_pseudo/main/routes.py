@@ -16,7 +16,6 @@ main = Blueprint('main', __name__)
 
 @main.before_app_first_request
 def init_main():
-    current_app.pseudoThread = list()
     if not hasattr(current_app, 'pseudoService'):
         raise AttributeError('no pseudoService set in main')
     current_app.pseudoService.start()
@@ -158,7 +157,7 @@ def showFile(fullname, filename, file_object, pseudoService, sftp):
     elif request.form['submit_button'] == 'Pseudonymiser fil':
         flash('Pseudonymiserer fil', 'info')
         file_object.close()
-        pseudoService.add(jsonfile, sftp)
+        pseudoService.addDict(jsonfile, sftp)
         #return redirect(url_for('main.pseudo'))
     else:
         return "Should not be reached"
