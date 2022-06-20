@@ -36,6 +36,6 @@ class UpdateLeverandorForm(FlaskForm):
     kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired(), Length(min=3,max=6)])
     leverandor = StringField('Navn på dataleverandør', validators=[DataRequired(), Length(min=3,max=100)])
     websak = StringField('Websak', validators=[Length(max=200)])
-    ansv_seksjon = StringField('Ansvarlig seksjon for avtale', validators=[Length(min=0,max=4)])
+    ansv_seksjon = StringField('Ansvarlig seksjon for avtale', validators=[Length(min=0, max=4)])
 
     submit = SubmitField('Oppdater')

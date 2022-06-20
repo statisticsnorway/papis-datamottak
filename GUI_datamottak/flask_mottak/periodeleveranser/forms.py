@@ -26,20 +26,43 @@ class SelectPeriodeForm(FlaskForm):
     submit = SubmitField('Oppdater eksisterende periodeleveranse')
 
 class RegistrationForm(FlaskForm):
-    periode = StringField('Periode', validators=[DataRequired(), Length(max=20)])
+    periode = StringField('Periode', validators=[DataRequired(), Length(min=4, max=20)])
     leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(max=100)])
     kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired(), Length(min=0,max=6)])
     #forventet_dato = StringField('Forventet mottaksdato', validators=[DataRequired(), Length(max=20)])
 
     submit = SubmitField('Registrer periodeleveranse')
 
+    def validate_periode(self, periode):
+        aargang = periode.data[0:4]
+
+        try:
+            int(aargang)
+        except ValueError:
+            raise ValidationError(f'Fire første siffer i periode må være et gyldig årstall. Fant {aargang}')
+
+        if not ( int(aargang) >= 1900 and  int(aargang) <= 2040 ):
+            raise ValidationError(f'Fire første siffer i periode må være et gyldig årstall. Fant {aargang}')
+
+
 
 
 class UpdatePeriodeleveranseForm(FlaskForm):
-    periode = StringField('Periode', validators=[DataRequired(), Length(max=20)])
+    periode = StringField('Periode', validators=[DataRequired(), Length(min=4, max=20)])
     leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(max=100)])
     kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired(), Length(min=3, max=6)])
     #forventet_dato = StringField('Forventet mottaksdato', validators=[DataRequired(), Length(max=20)])
     #mottatt_dato = StringField('Faktisk mottaksdato', validators=[DataRequired(), Length(max=20)])
 
     submit = SubmitField('Oppdater periodeleveranse')
+
+    def validate_periode(self, periode):
+        aargang = periode.data[0:4]
+
+        try:
+            int(aargang)
+        except ValueError:
+            raise ValidationError(f'Fire første siffer i periode må være et gyldig årstall. Fant {aargang}')
+
+        if not ( int(aargang) >= 1900 and  int(aargang) <= 2040 ):
+            raise ValidationError(f'Fire første siffer i periode må være et gyldig årstall. Fant {aargang}')

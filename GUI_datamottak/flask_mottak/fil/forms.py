@@ -1,7 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import SubmitField, StringField, SelectField, IntegerField, SelectMultipleField
+from wtforms import SubmitField, StringField, SelectField, IntegerField, SelectMultipleField, DateField
 from wtforms.validators import DataRequired, Length, ValidationError, InputRequired, NumberRange
 from flask_mottak.models import Fil
+import datetime
 
 
 class SelectLeverandorForm(FlaskForm):
@@ -31,7 +32,9 @@ class RegistrerFilSkjema(FlaskForm):
     data_leveranse = StringField('Dataleveranse', validators=[DataRequired(), Length(max=100)])
     kort_lev = StringField('Kortnavn dataleverandør', validators=[DataRequired(), Length(min=0, max=6)])
     filnavn = StringField('Filnavn', validators=[DataRequired(), Length(max=200)])
-    fil_mottatt = StringField('Mottaksdato', validators=[DataRequired(), Length(max=20)])
+    fil_mottatt = DateField('Mottaksdato (DD-MM-ÅÅÅÅ)', validators=[InputRequired()])# format='%d-%m-%Y',
+
+    submit = SubmitField('Opprett fil')
 
     def validate_filnavn(self, filnavn):
         filnavn = Fil.query.filter_by(filnavn=filnavn.data).first()
@@ -39,7 +42,13 @@ class RegistrerFilSkjema(FlaskForm):
         if filnavn:
             raise ValidationError(f'Filnavn er allerede registrert.')
 
-    submit = SubmitField('Opprett fil')
+
+    def validate_fil_mottatt(self, fil_mottatt):
+
+        if fil_mottatt.data < datetime.date.today():#, '%d-%m-%Y'
+            raise ValidationError("Dato kan ikke være i fortiden!")
+
+
 
 
 class Konfigurasjon_mFnrLeting(FlaskForm):

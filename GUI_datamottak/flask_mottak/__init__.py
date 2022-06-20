@@ -22,6 +22,7 @@ def create_app(config_class=Config):
     from flask_mottak.main.routes import main
     from flask_mottak.fil.routes import fil
     from flask_mottak.errors.handlers import errors
+    #from  import pseudoService
     app.register_blueprint(leverandorer)
     app.register_blueprint(dataleveranser)
     app.register_blueprint(periodeleveranser)

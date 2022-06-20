@@ -22,6 +22,20 @@
         <legend class = "border-bottom mb-4">{{ legend }}</legend>
 
 		<div class = "form-group">
+	      {{ form.pseudo_vars.label(class="form-control-label") }}
+	      {% if form.pseudo_vars.errors %}
+	  	    {{ form.pseudo_vars(class="form-control form-control-lg is-invalid") }}
+	    	<div class="invalid-feedback">
+	    	{% for error in form.pseudo_vars.errors %}
+	      		<span>{{ error }}</span>
+	    	{% endfor %}
+	    	</div>
+	      {% else %}
+	  	    {{ form.pseudo_vars(class="form-control form-control-lg") }}
+	      {% endif %}
+	    </div>
+
+		<div class = "form-group">
 	      {{ form.fodselsnr.label(class="form-control-label") }}
 	      {% if form.fodselsnr.errors %}
 	  	    {{ form.fodselsnr(class="form-control form-control-lg is-invalid") }}

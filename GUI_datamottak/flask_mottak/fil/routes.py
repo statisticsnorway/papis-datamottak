@@ -134,9 +134,10 @@ def registrerFil(kort_lev, periode, leveranse):
                     configfil['filtype'] = filtype
                     configfil['dataleverandor'] = form.kort_lev.data
                     configfil['leveranse'] = form.data_leveranse.data
-                    configfil['aargang'] = form.periode.data
+                    configfil['aargang'] = form.periode.data[0:4]
 
-                    return redirect(url_for('fil.fnr_leting', kort_lev=kort_lev, leveranse=leveranse, filnavn=form.filnavn.data))
+                    return redirect(url_for('fil.fnr_leting', kort_lev=kort_lev, leveranse=leveranse,
+                                            filnavn=form.filnavn.data, periode=form.periode.data))
                 else:
                     flash(f'Kun følgende filtyper kan behandles: {Config.EXTENSIONS}. Fil oppgitt: {form.filnavn.data}', 'warning')
 
@@ -186,8 +187,8 @@ def registrerFil(kort_lev, periode, leveranse):
 #    return render_template('filnavn.html', title='Filvalg', form=form, legend='Filvalg')
 
 
-@fil.route('/fnr_leting/<string:kort_lev>/<string:leveranse>/<path:filnavn>', methods=['POST', 'GET'])
-def fnr_leting(kort_lev, leveranse, filnavn):
+@fil.route('/fnr_leting/<string:kort_lev>/<string:leveranse>/<string:periode>/<path:filnavn>', methods=['POST', 'GET'])
+def fnr_leting(kort_lev, leveranse, periode, filnavn):
     form = fnrLeting()
 
     if form.validate_on_submit():
@@ -195,19 +196,21 @@ def fnr_leting(kort_lev, leveranse, filnavn):
             configfil = data['fnrlet']
             configfil['fnrleting'] = '1'
 
-            return redirect(url_for('fil.letingFnr', kort_lev=kort_lev, leveranse=leveranse, filnavn=filnavn))
+            return redirect(url_for('fil.letingFnr', kort_lev=kort_lev, leveranse=leveranse, filnavn=filnavn,
+                                    periode=periode))
 
         else:
             configfil = data['fnrlet']
             configfil['fnrleting'] = '0'
 
-            return redirect(url_for('fil.uten_letingFnr', kort_lev=kort_lev, leveranse=leveranse, filnavn=filnavn))
+            return redirect(url_for('fil.uten_letingFnr', kort_lev=kort_lev, leveranse=leveranse, filnavn=filnavn,
+                                    periode=periode))
 
     return render_template('fnrleting.html', title='Filvalg', form=form, legend='Filvalg')
 
 
-@fil.route('/fnr_leting/skjema/<string:kort_lev>/<string:leveranse>/<path:filnavn>', methods=['POST', 'GET'])
-def letingFnr(kort_lev, leveranse, filnavn):
+@fil.route('/fnr_leting/skjema/<string:kort_lev>/<string:leveranse>/<string:periode>/<path:filnavn>', methods=['POST', 'GET'])
+def letingFnr(kort_lev, leveranse, periode, filnavn):
 
     df, meta = pyreadstat.read_sas7bdat('/'+filnavn, metadataonly=True)
     meta_a = sorted(meta.variable_storage_width.items(), key=lambda x: x[1], reverse=True)
@@ -276,15 +279,17 @@ def letingFnr(kort_lev, leveranse, filnavn):
         os.fchmod(fd, mode)
         #os.chmod(configfil, os.stat.S_IROTH | os.stat.S_IWOTH | os.stat.S_IXOTH)
 
-        return redirect(url_for('fil.kvalitetsrapport', number=number, kort_lev=kort_lev, leveranse=leveranse))
+        return redirect(url_for('fil.kvalitetsrapport', number=number, kort_lev=kort_lev, leveranse=leveranse,
+                                periode=periode))
 
 
     return render_template('konfig_mFnrLeting.html', title='Konfigurer fnrleting',
                            form=form, legend='Konfigurer fnrleting')
 
 
-@fil.route('/utenFnr_leting/skjema/<string:kort_lev>/<string:leveranse>/<path:filnavn>', methods=['POST', 'GET'])
-def uten_letingFnr(kort_lev, leveranse, filnavn):
+@fil.route('/utenFnr_leting/skjema/<string:kort_lev>/<string:leveranse>/<string:periode>/<path:filnavn>',
+           methods=['POST', 'GET'])
+def uten_letingFnr(kort_lev, leveranse, periode, filnavn):
     df, meta = pyreadstat.read_sas7bdat('/'+filnavn, metadataonly=True)
     meta_a = sorted(meta.variable_storage_width.items(), key=lambda x: x[1], reverse=True)
 
@@ -335,14 +340,16 @@ def uten_letingFnr(kort_lev, leveranse, filnavn):
         os.fchmod(fd, mode)
         #os.chmod(configfil, os.stat.S_IROTH | os.stat.S_IWOTH | os.stat.S_IXOTH)
 
-        return redirect(url_for('fil.kvalitetsrapport_utenFnrLeting', number=number, kort_lev=kort_lev, leveranse=leveranse))
+        return redirect(url_for('fil.kvalitetsrapport_utenFnrLeting', number=number, kort_lev=kort_lev,
+                                leveranse=leveranse, periode=periode))
 
     return render_template('konfig_uFnrLeting.html', title='Konfigurer fil for kontroll',
                            form=form, legend='Konfigurer fil for kontroll')
 
 
-@fil.route('/kvalitetsrapport/<string:number>/<string:kort_lev>/<string:leveranse>', methods=['POST', 'GET'])
-def kvalitetsrapport(number, kort_lev, leveranse):#leveranse
+@fil.route('/kvalitetsrapport/<string:number>/<string:kort_lev>/<string:leveranse>/<string:periode>',
+           methods=['POST', 'GET'])
+def kvalitetsrapport(number, kort_lev, leveranse, periode):#leveranse
     loggfil = '/ssb/stamme01/papis/wk12/loggfil_'+number+'.sas7bdat'
 
     while not os.path.exists(loggfil):
@@ -364,11 +371,13 @@ def kvalitetsrapport(number, kort_lev, leveranse):#leveranse
 
 
     df.loc[df['verdi'].str.strip() == '.', 'verdi'] = None
+    df.loc[df['verdi'].str.strip() == '', 'verdi'] = None
+    df['verdi'] = df['verdi'].str.strip()
     variabler = df['variabel'].tolist()
     verdi = df['verdi'].tolist()
     var_verdi = dict(zip(variabler, verdi))
 
-    rapport = Kvalitet(periode = var_verdi['periode'], leveranse = leveranse, kort_lev = kort_lev,
+    rapport = Kvalitet(periode = periode, leveranse = leveranse, kort_lev = kort_lev,
         filnavn = var_verdi['Filsti'] + '1_Raadata/' + var_verdi['filnavn_inn'] + '.' + var_verdi['Filtype'], lenke_rapp = "Test",
         behandlet_datotid = var_verdi['behandlet_datotid'], antall_obs = var_verdi['antall_obs'],
         antall_unike_id = var_verdi['antall_unike_id'], antall_gyldige_id = var_verdi['antall_gyldige_id'],
@@ -499,8 +508,9 @@ def kvalitetsrapport(number, kort_lev, leveranse):#leveranse
     return render_template('kvalitetsrapport.html',  title='Kvalitetsrapport', legend='kvalitetsrapport')#logg=rapport,
 
 
-@fil.route('/kvalitetsrapport_utenFnrLeting/<string:number>/<string:kort_lev>/<string:leveranse>', methods=['POST', 'GET'])
-def kvalitetsrapport_utenFnrLeting(number, kort_lev, leveranse):#leveranse
+@fil.route('/kvalitetsrapport_utenFnrLeting/<string:number>/<string:kort_lev>/<string:leveranse>/<string:periode>',
+           methods=['POST', 'GET'])
+def kvalitetsrapport_utenFnrLeting(number, kort_lev, leveranse, periode):#leveranse
     loggfil = '/ssb/stamme01/papis/wk12/loggfil_'+number+'.sas7bdat'
 
     while not os.path.exists(loggfil):
@@ -526,7 +536,7 @@ def kvalitetsrapport_utenFnrLeting(number, kort_lev, leveranse):#leveranse
     verdi = df['verdi'].tolist()
     var_verdi = dict(zip(variabler, verdi))
 
-    rapport = Kvalitet(periode = var_verdi['periode'], leveranse = leveranse, kort_lev = kort_lev,
+    rapport = Kvalitet(periode = periode, leveranse = leveranse, kort_lev = kort_lev,
         filnavn = var_verdi['Filsti'] + '1_Raadata/' + var_verdi['filnavn_inn'] + '.' + var_verdi['Filtype'], lenke_rapp = "Test",
         behandlet_datotid = var_verdi['behandlet_datotid'], antall_obs = var_verdi['antall_obs'],
         antall_unike_id = var_verdi['antall_unike_id'], antall_gyldige_id = var_verdi['antall_gyldige_id'],
