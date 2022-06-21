@@ -4,10 +4,9 @@ from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 
 from .config import Config
-from .pseudoService import PseudoService
+
 
 from datamottak.sftp.sftpserver import start_server, stop_server
-from papis_service.common.configureServerEnv import ConfigureServerEnv
 
 import threading
 import sys
@@ -18,15 +17,6 @@ bcrypt = Bcrypt()
 
 root = 'C:/' if sys.platform == 'win32' else '/ssb/'
 
-
-
-def startAll():
-  start_server()
-  app = create_app()
-  return app
-
-def stopAll(app):
-  stop_server()
 
 def create_app(config_class=Config):
   app=Flask(__name__, template_folder='Templates')
@@ -39,19 +29,19 @@ def create_app(config_class=Config):
   app.jinja_env.trim_blocks = True
   app.jinja_env.lstrip_blocks = True
   
-  pseudoService = PseudoService(app.config['PSEUDO_DB'], app.config['PSEUDO_DICT'],
-                            'papisService', app.instance_path)
+  from papis_service.pseudoService import PseudoService
+  pseudoService = PseudoService() #(hvor er pseudoService?)
+  #pseudoService = PseudoService(app.config['PSEUDO_DB'], app.config['PSEUDO_DICT'],
+  #                          'papisService', app.instance_path)
 
   from .user.routes import login_manager
-  
   login_manager.init_app(app)
   
-  #with open('config_mal.json', 'r') as myfile:
-  #  data=json.loads(myfile.read())
+  
   dictionary = {'db': db, 'migrate': migrate, 'bcrypt': bcrypt, 
                 'login_manager' : login_manager,
                 'root' : root}
-  app.config['PAPIS'] = dictionary
+  app.config['APP'] = dictionary
   app.config['PSEUDO'] = pseudoService
   ssh_host = app.config['SSH_HOST']
   ssh_port = app.config['SSH_PORT']
@@ -75,7 +65,26 @@ def create_app(config_class=Config):
       current_app.ssh_host = ssh_host
       current_app.ssh_port = ssh_port
       current_app.ssh_timeout = ssh_timeout
+
+  return app
+
+def testapp(config_class=Config):
+  app=Flask(__name__, template_folder='Templates_test')
+  app.config.from_object(config_class)
+  app.jinja_env.trim_blocks = True
+  app.jinja_env.lstrip_blocks = True
   
+  from papis_service.pseudoService import PseudoService
+  pseudoService = PseudoService(app.config['PSEUDO_DICT'], app.config['PSEUDO_DB'], 
+                            'SQL', app.instance_path)
+  app.config['PSEUDO'] = pseudoService
+
+  from .main.routes_test import testB
+  from .main.routes_dev import dev
+  with app.app_context():
+    app.register_blueprint(testB)
+    app.register_blueprint(dev)
+    current_app.pseudoService = pseudoService
   return app
 
 def customRun(app, server=True,  threaded=True, host=None, port = None):

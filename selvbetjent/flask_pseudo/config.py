@@ -21,7 +21,7 @@ class Config:
   HOST = 'localhost'
   PORT = 5000
   SSL = False
-  PSEUDO_DB = "pseudo_db"
+  PSEUDO_DB = "pseudo.db"
   PSEUDO_DICT =  {'AUTH' : 'NONE',
     'AUTH_LOCATION' : None, 
     'PSEUDO_ALGORITHM' : 'FF3', #FFX, FF1, FF3

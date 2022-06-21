@@ -6,7 +6,7 @@ Created on Thu Mar 18 14:34:56 2021
 """
 
 from papis_service.common.configureServerEnv import ConfigureServerEnv
-from datamottak.sas import Ps
+from papis_service.sas import Ps
 
 
 class Pseudo:
