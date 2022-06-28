@@ -1,17 +1,7 @@
 {% extends "base.html" %}
-{% block title%}Index{% endblock %} 
+{% block title%}Index{% endblock %}
+{% block navbar%}{{super()}}{% endblock %}
 {% block content %}
-{% with messages = get_flashed_messages(with_categories=true) %}
-  <!-- Categories: success (green), info (blue), warning (yellow), danger (red) -->
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }}" role="alert">
-      <!-- <strong>Title</strong> --> {{ message }}
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-  <div class="container">
   {% for report in reports %}
     <article class="media content-section">
       <div class="media-body">
@@ -26,5 +16,4 @@
       </div>
     </article> 
   {% endfor %} 
-  </div>
 {% endblock %} 

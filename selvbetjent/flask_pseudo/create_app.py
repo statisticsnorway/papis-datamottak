@@ -18,7 +18,7 @@ bcrypt = Bcrypt()
 root = 'C:/' if sys.platform == 'win32' else '/ssb/'
 
 
-def create_app(config_class=Config):
+def create_app(config_class=Config, initialiseDB = False):
   app=Flask(__name__, template_folder='Templates')
   app.config.from_object(config_class)
 
@@ -30,9 +30,10 @@ def create_app(config_class=Config):
   app.jinja_env.lstrip_blocks = True
   
   from papis_service.pseudoService import PseudoService
-  pseudoService = PseudoService() #(hvor er pseudoService?)
-  #pseudoService = PseudoService(app.config['PSEUDO_DB'], app.config['PSEUDO_DICT'],
-  #                          'papisService', app.instance_path)
+  pseudoService = PseudoService(app.config['PSEUDO_DICT'],
+                                app.config['PSEUDO_DB'], 
+                                'SQL', app.instance_path,
+                                initialiseDB)
 
   from .user.routes import login_manager
   login_manager.init_app(app)
@@ -68,23 +69,23 @@ def create_app(config_class=Config):
 
   return app
 
-def testapp(config_class=Config):
-  app=Flask(__name__, template_folder='Templates_test')
+def testapp(config_class=Config, initialiseDB = False):
+  app=Flask(__name__, template_folder='Templates')
   app.config.from_object(config_class)
   app.jinja_env.trim_blocks = True
   app.jinja_env.lstrip_blocks = True
   
-  from papis_service.pseudoService import PseudoService
-  pseudoService = PseudoService(app.config['PSEUDO_DICT'], app.config['PSEUDO_DB'], 
-                            'SQL', app.instance_path)
-  app.config['PSEUDO'] = pseudoService
+  #from papis_service.pseudoService import PseudoService
+  #pseudoService = PseudoService(app.config['PSEUDO_DICT'], app.config['PSEUDO_DB'], 
+  #                          'SQL', app.instance_path, initialiseDB)
+  #app.config['PSEUDO'] = pseudoService
 
   from .main.routes_test import testB
   from .main.routes_dev import dev
   with app.app_context():
     app.register_blueprint(testB)
     app.register_blueprint(dev)
-    current_app.pseudoService = pseudoService
+    #current_app.pseudoService = pseudoService
   return app
 
 def customRun(app, server=True,  threaded=True, host=None, port = None):

@@ -1,22 +1,18 @@
 <!DOCTYPE html>
-<html lang=\"no\">
-<html>
+<html lang="no">
 <head>
   <meta charset="utf-8">
-  <!-- Bootstrap file -->
-   
   <link type="text/css" rel="stylesheet" href="{{url_for('static', filename = 'css/bootstrap.min.css') }}">
-  
   <title>{% block title %}{% endblock %}</title>
 </head>
 <body>
-  
-  {% include 'navbar.html' %}
+  {% block navbar %}{% include "navbar.html" %} {% endblock %}
   <br>
   <br>
-  <br>
-  {% block content %}
-  {% endblock %}
+  {% block flashed %}{% include "flashed.html" %}{% endblock %}
+  <div class="container" id="content">
+  {% block content %}{% endblock %}
+  </div>
   <script src="{{url_for('static', filename = 'js/jquery-3.6.0.min.js') }}" type="text/javascript"></src>
   <script src="{{url_for('static', filename = 'js/bootstrap.min.js') }}"></src> 
 </body>

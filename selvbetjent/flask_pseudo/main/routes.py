@@ -1,7 +1,7 @@
 from flask import Blueprint
-from flask import request, redirect, render_template, json, flash, url_for, current_app
+from flask import request, redirect, render_template, flash
+from flask import url_for, current_app, g
 from flask_login import current_user, logout_user
-from ..models import Log
 from stat import S_ISDIR, S_ISREG
 from os.path import split 
 import os
@@ -45,7 +45,15 @@ def con_is_active(ssh):
     
 @main.route('/pseudo')
 def pseudo():
-    return str((current_app.pseudoService.showList(), current_app.pseudoService.error))
+    g.header = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Filtype')
+    g.toDo = current_app.pseudoService.showList()
+    g.errorHeader = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Error melding')
+    g.error = current_app.pseudoService.error
+    g.done = current_app.pseudoService.done
+    g.tables = [('To Do list:', g.header, g.toDo),
+                ('Done list:', g.header, g.done),
+                ('Error list:', g.errorHeader, g.error)]
+    return render_template('pseudo.html')
     
 @main.route('/files/')
 @main.route('/files/<path:path>', methods=['POST', 'GET'])
@@ -68,7 +76,7 @@ def files(path = ''):
     
     #path_split = ('/Users/tir/Desktop/python/sas7bdat, testfil.sas7bdat')
     #path_join = '/Users/tir/Desktop/python/sas7bdat/testfil.sas7bdat'
-    print(f'Path is: {path}, striped path is: {path_split}, joined path: {path_join}')
+    #print(f'Path is: {path}, striped path is: {path_split}, joined path: {path_join}')
     
     #If root
     try:
@@ -120,50 +128,57 @@ def showDirectory(listing):
     return render_template('browser.html', folder=[fo], files=[fi])
 
 
-def showFile(fullname, filename, file_object, pseudoService, sftp):
-     
-    try:
+def showFile(fullname, filename, file_object, pseudoService, sftp):     
+    rowNum = 2
+    if hasattr(current_user, 'json_buffered'):
+        if current_user.json_buffered[0]['gammelfil'] == fullname:
+            g.json, g.header, g.rows = current_user.json_buffered
+            
+    if not hasattr(g, 'json'):
+        try:
     #encoding='unicode_escape'
-        df = pd.read_sas(file_object, format='sas7bdat', 
+            df = pd.read_sas(file_object, format='sas7bdat', 
                          index=None, encoding=None, iterator=False,
                          chunksize = io.DEFAULT_BUFFER_SIZE)
-        header = [col.name for col in df.columns]
-        rows = df.read(2)
-        row0 = rows.iloc[0].values.tolist()
-        row1 = rows.iloc[1].values.tolist()
-        
-        split = os.path.splitext(fullname)
-        jsonfile = {'gammelfil': fullname,
+            rows = df.read(rowNum)
+            g.header = [col for col in df.column_names]
+            g.rows = [rows.iloc[i].values.tolist() for i in range(rowNum)]
+            split = os.path.splitext(fullname)
+            g.json = {'gammelfil': fullname,
                     'nyfil' : split[0] + '_pseudo' + split[1],
                     'pseudoCol' : [],
                     'filetype' : 'sas'
                     }
-    except Exception as ex:
-        return f'Pandas error: {ex}'
+            file_object.close()
+            #print(f'json {g.json}')
+        except Exception as ex:
+            return f'Pandas error: {ex}'
+    
     if request.method == 'GET':
-        return render_template('dropbox.html', orgfil=jsonfile['gammelfil'], nyfil=jsonfile['nyfil'],
-                               header=header, row0=row0, row1=row1, 
-                               jsonfile=jsonfile)
-    elif request.method != 'POST':
-        return 'Request method not GET or POST'
+        current_user.json_buffered = (g.json, g.header, g.rows)
+        return render_template('dropbox.html')
     
-    #jsonfile['request'] = request.form.copy()
+    g.json['pseudoCol'] = [g.header[i] 
+                           for i in range(len(g.header))
+                           if request.form.get(f'pseudo{i}') == 'on']
     
-    jsonfile['pseudo'] = request.form.getlist('pseudo')
-    #jsonfile['nyttfilnavn'] = request.form.get('nyttnavn')
-    
-    if request.form['submit_button'] == 'Oppdater konfigurasjonsfil':
-        flash('Oppdater konfigurasjonsfil', 'info')
-    elif request.form['submit_button'] == 'Pseudonymiser fil':
-        flash('Pseudonymiserer fil', 'info')
-        file_object.close()
-        pseudoService.addDict(jsonfile, sftp)
-        #return redirect(url_for('main.pseudo'))
-    else:
-        return "Should not be reached"
-    #varsx = sas_op.getVarnames(sas_op.getFilename(filename), sas_op.getPath(filename))
-    #columns = varsx.iloc[:,0].to_list()
-    return render_template('dropbox.html', orgfil=jsonfile['gammelfil'], nyfil=jsonfile['nyfil'],
-                               header=header, row0=row0, row1=row1, 
-                               jsonfile=jsonfile)
+    print(f'g.json:{g.json}')
 
+    if request.form.get('submit_button') == 'Pseudonymiser fil':
+        flash(f'Pseudonymiserer fil {g.json}', 'info')
+        pseudoService.add(g.json['gammelfil'], g.json['nyfil'],
+                          g.json['pseudoCol'], g.json['filetype'],
+                          sftp)
+        #return render_template('dropbox.html')
+        del current_user.json_buffered
+        return redirect(url_for('main.pseudo'))
+    
+    if request.form.get('submit_button') == 'Oppdater konfigurasjon':
+        flash('Oppdater konfigurasjonsfil', 'info')
+    
+    if request.form.get('newFilename'):
+        g.json['nyfil'] = request.form['newFilename']
+        flash(f'Nytt filnavn:{g.json["nyfil"]}', 'info')
+    
+    current_user.json_buffered = (g.json, g.header, g.rows)
+    return render_template('dropbox.html')

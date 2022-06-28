@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title%}Pseudo{% endblock %}
+{% block navbar%}{% endblock %}
+{% block content %}
+ <h4>Pseudonymiseringsservice status:</h4>
+<br>
+{% for title, header, body in g.tables %}
+ <h4>{{title}}</h4>
+
+    <table class="table table-hover table-sm">
+  	<thead>
+    		<tr>
+			{% for h in header %}
+			<th scope="col">{{ h }}</th>
+			{% endfor %}
+		</tr>
+	</thead>
+	<tbody>
+	{% for row in body %}
+    	<tr>
+      		{% for c in row %}<td>{{c}}</td>{% endfor %}
+		</tr>
+    {% endfor %}
+	</tbody>
+    </table>
+{% endfor %}
+{% endblock %}
