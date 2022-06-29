@@ -74,10 +74,7 @@ def files(path = ''):
     else:
         path_join = path_split[0] + '/' + path_split[1]
     
-    #path_split = ('/Users/tir/Desktop/python/sas7bdat, testfil.sas7bdat')
-    #path_join = '/Users/tir/Desktop/python/sas7bdat/testfil.sas7bdat'
-    #print(f'Path is: {path}, striped path is: {path_split}, joined path: {path_join}')
-    
+
     #If root
     try:
         if path_split[1] == '':
@@ -86,7 +83,11 @@ def files(path = ''):
             return showDirectory(current_user.lastdir)
         else:
             parent = current_user.sftp.listdir_attr(path_split[0])
-            entry = [entry for entry in parent if entry.filename == path_split[1]].pop()
+            entryList = [entry for entry in parent if entry.filename == path_split[1]]
+            if not entryList:
+                flash(f'{path_join} is not a file', 'warning')
+                return showDirectory(current_user.lastdir)               
+            entry = entryList.pop()
             if S_ISDIR(entry.st_mode):
                 listing = current_user.sftp.listdir_attr(path_join)
                 current_user.lastdir = (path_join, listing)
@@ -112,7 +113,10 @@ def files(path = ''):
                 return showDirectory(current_user.lastdir)
     except FileNotFoundError as ex:
         flash(f'{path_join} is neither file or directory, FileNotFoundError {ex}', 'warning')
-        return showDirectory(current_user.lastdir)        
+        return showDirectory(current_user.lastdir)
+    except IOError as ex:
+        flash(f'{path_join} cannot be accessed {ex}', 'warning')
+        return showDirectory(current_user.lastdir)
     
 def showDirectory(listing):
     parent, pathlist = listing
