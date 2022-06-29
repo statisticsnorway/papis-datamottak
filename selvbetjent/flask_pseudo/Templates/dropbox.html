@@ -4,46 +4,47 @@
 {% block content %}
  <h4>Fil som skal pseudonymiseres: {{g.json['gammelfil']}}</h4>
  <h4>Filnavn på ny pseudonymisert fil: {{g.json['nyfil']}}</h4>
-  <form method="POST" action="" class="row g-3">
-    <div><label> Nytt filnavn: 
-    <input type="text" name="newFilename" placeholder="nytt filnavn" </input>
-    </div>
-  </form>
-<br>   
-    <table class="table table-hover table-sm">
-    <form method="POST" action="" >
-  	<thead>
-    		<tr>
-			{% for h in g.header %}
-			<th scope="col">{{ h }}</th>
-			{% endfor %}
+<form method="POST" action="" class="row g-3">
+  <div><label> Nytt filnavn: 
+  <input type="text" name="newFilename" placeholder="nytt filnavn" </input>
+  </div>
+  <br>   
+  <table class="table table-hover table-sm">
+    <thead>
+        <tr>
+    	{% for h in g.header %}
+    		<th scope="col">{{ h }}</th>
+		{% endfor %}
 		</tr>
 	</thead>
 	<tbody>
 	{% for row in g.rows %}
     	<tr>
       		{% for c in row %}
-			<td>{{ c }}</td>
+    			<td>{{ c }}</td>
 			{% endfor %}
 		</tr>
     {% endfor %}
-		<tr>
-			{% for h in g.header %}
+    	<tr>
+		{% for h in g.header %}
 			<td>
-				<div class="form-check form-switch">
-  				<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" 
-  				{% if h in g.json['pseudoCol'] %} checked {% endif %} name="pseudo{{loop.index0}}">
-  				<label class="form-check-label" for="flexSwitchCheckDefault">Pseudo</label>
+			<div class="form-check form-switch">
+  			<input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" 
+  			{% if h in g.json['pseudoCol'] %} checked {% endif %} name="pseudo{{loop.index0}}">
+  			<label class="form-check-label" for="flexSwitchCheckDefault">Pseudo</label>
 			</td>
-			{% endfor %}
+		{% endfor %}
 		</tr>
 	</tbody>
-    </table>
-    <input type="submit" class="btn btn-outline-success my-2 my-sm-0" name="submit_button" value="Oppdater konfigurasjon">
-
-    <h4>Konfigurasjonsfil:</h4>
-      <pre>{{g.json}}</pre>
-  
-      <input class="btn btn-outline-success my-2 my-sm-0" type="submit" name="submit_button" value="Pseudonymiser fil">
-    </form> 
+  </table>
+  <input type="submit" class="btn btn-outline-success my-2 my-sm-0" name="submit_button" value="Oppdater konfigurasjon">
+  <h4>Konfigurasjonsfil:</h4>
+  <pre>{{g.json}}</pre>
+  <input class="btn btn-outline-success my-2 my-sm-0" type="submit" name="submit_button" value="Pseudonymiser fil">
+  <br>
+  <div class="form-check form-switch">
+  <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" 
+  {% if not g.json['encrypt'] %} checked {% endif %} name="decrypt">
+  <label class="form-check-label" for="flexSwitchCheckDefault">Decrypt</label>
+</form> 
 {% endblock %}

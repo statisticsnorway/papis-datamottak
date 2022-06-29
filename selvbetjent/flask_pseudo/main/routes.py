@@ -151,6 +151,7 @@ def showFile(fullname, filename, file_object, pseudoService, sftp):
             g.json = {'gammelfil': fullname,
                     'nyfil' : split[0] + '_pseudo' + split[1],
                     'pseudoCol' : [],
+                    'encrypt' : True,
                     'filetype' : 'sas'
                     }
             file_object.close()
@@ -165,6 +166,7 @@ def showFile(fullname, filename, file_object, pseudoService, sftp):
     g.json['pseudoCol'] = [g.header[i] 
                            for i in range(len(g.header))
                            if request.form.get(f'pseudo{i}') == 'on']
+    g.json['encrypt'] = False if (request.form.get('decrypt') == 'on') else True
     
     print(f'g.json:{g.json}')
 
@@ -172,7 +174,7 @@ def showFile(fullname, filename, file_object, pseudoService, sftp):
         flash(f'Pseudonymiserer fil {g.json}', 'info')
         pseudoService.add(g.json['gammelfil'], g.json['nyfil'],
                           g.json['pseudoCol'], g.json['filetype'],
-                          sftp)
+                          g.json['encrypt'], sftp)
         #return render_template('dropbox.html')
         del current_user.json_buffered
         return redirect(url_for('main.pseudo'))
