@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title%}Sas file{% endblock %}
-{% block navbar%}{% endblock %}
+{% block navbar%}{{super()}}{% endblock %}
 {% block content %}
  <h4>Fil som skal pseudonymiseres: {{g.json['gammelfil']}}</h4>
  <h4>Filnavn på ny pseudonymisert fil: {{g.json['nyfil']}}</h4>

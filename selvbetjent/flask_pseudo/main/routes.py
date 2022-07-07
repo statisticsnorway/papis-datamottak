@@ -45,14 +45,19 @@ def con_is_active(ssh):
     
 @main.route('/pseudo')
 def pseudo():
-    g.header = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Filtype')
-    g.toDo = current_app.pseudoService.showList()
-    g.errorHeader = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Error melding')
-    g.error = current_app.pseudoService.error
-    g.done = current_app.pseudoService.done
-    g.tables = [('To Do list:', g.header, g.toDo),
-                ('Done list:', g.header, g.done),
-                ('Error list:', g.errorHeader, g.error)]
+    header = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Filtype')
+    errorHeader = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Error melding')
+    nowHeader = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Starttidspunkt')
+    toDo = current_app.pseudoService.showList()
+    error = current_app.pseudoService.error
+    done = current_app.pseudoService.done
+    future = [(x[0], x[1], x[2], x[3]) for x in 
+              current_app.pseudoService.worklistFuture]
+    g.tables = [('Working on', nowHeader, [current_app.pseudoService.current,]),
+                ('To Do list:', header, toDo),
+                ('Done list:', header, done),
+                ('Future list:', header, future),
+                ('Error list:', errorHeader, error)]
     return render_template('pseudo.html')
     
 @main.route('/files/')
