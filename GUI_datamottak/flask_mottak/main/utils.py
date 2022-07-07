@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+from flask import flash
 
 
 
@@ -49,3 +50,34 @@ def config_ready(data):
     return False
   else:
     return True
+
+def variabel_verdi_dict(df, loggfil):
+    if df is None:
+        flash(f'{loggfil} har ingen records! Antakelig innebærer dette at sas-fil fra fnr-leting er tom.',
+              'warning')
+        return None
+    if not df.empty:
+        df.loc[df['verdi'].str.strip() == '.', 'verdi'] = None
+        df.loc[df['verdi'].str.strip() == '', 'verdi'] = None
+        df['verdi'] = df['verdi'].str.strip()
+        variabler = df['variabel'].tolist()
+        verdi = df['verdi'].tolist()
+        var_verdi = dict(zip(variabler, verdi))
+
+    return var_verdi
+
+def get_pseudo_vars(vars, fnr):
+    # Under fnr-leting/kontroll fjernes fnr-variabel.
+    # Ersattes av tre nye variable: fnr_orig, fnr_naa, snr
+    nye = ['fnr_orig', 'fnr_naa', 'snr']
+    pseudo_vars = vars + nye
+    pseudo_vars.append(fnr)
+    pseudo_vars = set(pseudo_vars)
+
+    try:
+        pseudo_vars.remove(fnr)
+    except ValueError:
+        flash(f'Prøver å fjerne verdi fra liste som ikke finnes i listen fra før - {fodselsnr}!',
+                  'warning')
+
+    return pseudo_vars

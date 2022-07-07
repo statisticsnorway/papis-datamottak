@@ -1,6 +1,7 @@
 from flask_mottak import create_app, db
 
 app = create_app()
+app.pseudoService.start()
 db.create_all(app=create_app())
 app.app_context().push()
 #db.session.commit()

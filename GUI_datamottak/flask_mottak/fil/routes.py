@@ -3,13 +3,13 @@ import os.path
 import time
 from flask_mottak.config import Config
 from flask import Blueprint
-from flask import request, redirect, render_template, flash, url_for, json
+from flask import request, redirect, render_template, flash, url_for, json, current_app
 from flask_mottak.models import Dataleveranse, Leverandor, Periodeleveranse, Kvalitet
 from flask_mottak import db
 from flask_mottak.models import Fil
 from flask_mottak.fil.forms import SelectLeverandorForm, SelectLeveranseForm, SelectPeriodeForm, RegistrerFilSkjema,\
     fnrLeting, Konfigurasjon_mFnrLeting, Konfigurasjon_uFnrLeting
-from flask_mottak.main.utils import read_sas_file
+from flask_mottak.main.utils import variabel_verdi_dict, get_pseudo_vars
 import pandas as pd
 import pyreadstat
 import os
@@ -99,9 +99,7 @@ def velg_periodeleveranse(kort_lev, leveranse):
 
 @fil.route('/filer/<string:kort_lev>/<string:periode>/<string:leveranse>/registrer', methods=['POST', 'GET'])
 def registrerFil(kort_lev, periode, leveranse):
-    periodeleveransen = Periodeleveranse.query.get([periode, leveranse, kort_lev])
-
-    #Kodet som benyttes under testing slik at en kan jobbe med samme objekt flere ganger
+    #Kode som benyttes under testing slik at en kan jobbe med samme objekt flere ganger
     db.session.query(Kvalitet).delete()
     db.session.query(Fil).delete()
     db.session.commit()
@@ -157,34 +155,6 @@ def registrerFil(kort_lev, periode, leveranse):
 
     return render_template('filbeskrivelse.html', title='Registrer fil',
                            form=form, legend='Registrer fil')
-
-
-#@fil.route('/filvalg/<path:filnavn>', methods=['POST', 'GET'])
-#def filvalg(filnavn):
-#    form = HentFilSkjema()
-
-#    if form.validate_on_submit():
-        #Vurder å flytte selve innlesingen til et senere steg
-        #df = read_sas_file('/'+filnavn)
-#        df = read_sas_file(filnavn)
-#        header = df.columns.tolist()
-#        row = df.iloc[0].values.tolist()
-
-       # if form.til_alder < form.fra_alder:
-       #     flash(f'Til alder - {form.til_alder.data} må være høyere enn fra alder - {form.fra_alder.data}', 'warning')
-       #     return redirect(url_for('fil.filvalg', filnavn=fil.filnavn))
-
-       # else:
-#        return redirect(url_for('fil.fnr_leting', filnavn=filnavn, header=header, row=row))
-
-#    elif request.method == 'GET':
-#        form.filnavn.data = filnavn
-#        form.tidbef.data = 'g2021m09d30'
-#        form.fodselsnr.data = 'fnr'
-#        #form.fnrleting.data = '1'
-
-
-#    return render_template('filnavn.html', title='Filvalg', form=form, legend='Filvalg')
 
 
 @fil.route('/fnr_leting/<string:kort_lev>/<string:leveranse>/<string:periode>/<path:filnavn>', methods=['POST', 'GET'])
@@ -277,10 +247,12 @@ def letingFnr(kort_lev, leveranse, periode, filnavn):
         fd = os.open(configfil, os.O_RDWR)
         mode = 0o777
         os.fchmod(fd, mode)
-        #os.chmod(configfil, os.stat.S_IROTH | os.stat.S_IWOTH | os.stat.S_IXOTH)
 
-        return redirect(url_for('fil.kvalitetsrapport', number=number, kort_lev=kort_lev, leveranse=leveranse,
-                                periode=periode))
+        pseudo_vars = get_pseudo_vars(pseudo_vars, fodselsnr)
+
+        return redirect(url_for('fil.kvalitetsrapport', number=number, kort_lev=kort_lev,
+            leveranse=leveranse, periode=periode, pseudo_vars=' '.join(pseudo_vars),
+            filnavn=filnavn, bruk_navn=bruk_navn))
 
 
     return render_template('konfig_mFnrLeting.html', title='Konfigurer fnrleting',
@@ -338,18 +310,21 @@ def uten_letingFnr(kort_lev, leveranse, periode, filnavn):
         fd = os.open(configfil, os.O_RDWR)
         mode = 0o777
         os.fchmod(fd, mode)
-        #os.chmod(configfil, os.stat.S_IROTH | os.stat.S_IWOTH | os.stat.S_IXOTH)
+
+        pseudo_vars = get_pseudo_vars(pseudo_vars, fodselsnr)
 
         return redirect(url_for('fil.kvalitetsrapport_utenFnrLeting', number=number, kort_lev=kort_lev,
-                                leveranse=leveranse, periode=periode))
+            leveranse=leveranse, periode=periode, pseudo_vars=' '.join(pseudo_vars),
+            filnavn=filnavn, bruk_navn=bruk_navn))
 
     return render_template('konfig_uFnrLeting.html', title='Konfigurer fil for kontroll',
                            form=form, legend='Konfigurer fil for kontroll')
 
 
-@fil.route('/kvalitetsrapport/<string:number>/<string:kort_lev>/<string:leveranse>/<string:periode>',
+@fil.route('/kvalitetsrapport/<string:number>/<string:kort_lev>/<string:leveranse>/<string:periode>/'
+           '<string:pseudo_vars>/<path:filnavn>/<string:bruk_navn>',
            methods=['POST', 'GET'])
-def kvalitetsrapport(number, kort_lev, leveranse, periode):#leveranse
+def kvalitetsrapport(number, kort_lev, leveranse, periode, pseudo_vars, filnavn, bruk_navn):
     loggfil = '/ssb/stamme01/papis/wk12/loggfil_'+number+'.sas7bdat'
 
     while not os.path.exists(loggfil):
@@ -359,7 +334,6 @@ def kvalitetsrapport(number, kort_lev, leveranse, periode):#leveranse
         try:
             df = pd.read_sas(loggfil, format='sas7bdat', index=None,
                          encoding='unicode_escape', iterator=False)
-
         except OSError:
             flash(f'Får ikke lest: {loggfil} !',
                   'warning')
@@ -367,150 +341,152 @@ def kvalitetsrapport(number, kort_lev, leveranse, periode):#leveranse
         flash(f'Ikke en gyldig fil: {loggfil} !',
               'warning')
 
-    #df = pd.read_sas('/ssb/stamme01/papis/wk12/loggfil_9999.sas7bdat', encoding='latin1')
+    var_verdi = variabel_verdi_dict(df, loggfil)
 
-
-    df.loc[df['verdi'].str.strip() == '.', 'verdi'] = None
-    df.loc[df['verdi'].str.strip() == '', 'verdi'] = None
-    df['verdi'] = df['verdi'].str.strip()
-    variabler = df['variabel'].tolist()
-    verdi = df['verdi'].tolist()
-    var_verdi = dict(zip(variabler, verdi))
-
-    rapport = Kvalitet(periode = periode, leveranse = leveranse, kort_lev = kort_lev,
-        filnavn = var_verdi['Filsti'] + '1_Raadata/' + var_verdi['filnavn_inn'] + '.' + var_verdi['Filtype'], lenke_rapp = "Test",
-        behandlet_datotid = var_verdi['behandlet_datotid'], antall_obs = var_verdi['antall_obs'],
-        antall_unike_id = var_verdi['antall_unike_id'], antall_gyldige_id = var_verdi['antall_gyldige_id'],
-        antall_gyldige_fnr = var_verdi['antall_gyldige_fnr'], antall_gyldige_dnr = var_verdi['antall_gyldige_dnr'],
-        antall_gyld_fnr_lik = var_verdi['antall_gyld_fnr_lik'], antall_gyld_fnr_ulik = var_verdi['antall_gyld_fnr_ulik'],
-        antall_gyld_dnr_lik = var_verdi['antall_gyld_dnr_lik'], antall_gyld_dnr_ulik = var_verdi['antall_gyld_dnr_ulik'],
-        antall_ugyldige = var_verdi['antall_ugyldige'], feil_1e_1 = var_verdi["feil_1e_1"] ,
-        feil_1e_2 = var_verdi["feil_1e_2"], feil_1f_1 = var_verdi["feil_1f_1"], feil_1f_2 = var_verdi["feil_1f_2"],
-        feil_2a_1 = var_verdi["feil_2a_1"], feil_2a_2 = var_verdi["feil_2a_2"], feil_2a_3 = var_verdi["feil_2a_3"],
-        feil_2a_4 = var_verdi["feil_2a_4"], feil_2a_5 = var_verdi["feil_2a_5"], feil_2a_6 = var_verdi["feil_2a_6"],
-        feil_2b_1 = var_verdi["feil_2b_1"], feil_2b_2 = var_verdi["feil_2b_2"], feil_2b_3 = var_verdi["feil_2b_3"],
-        feil_2b_4 = var_verdi["feil_2b_4"], feil_2b_5 = var_verdi["feil_2b_5"], feil_2b_6 = var_verdi["feil_2b_6"],
-        feil_2c_1 = var_verdi["feil_2c_1"], feil_2c_2 = var_verdi["feil_2c_2"], feil_2d_1 = var_verdi["feil_2d_1"],
-        feil_2d_2 = var_verdi["feil_2d_2"], feil_2d_3 = var_verdi["feil_2d_3"], feil_2e = var_verdi["feil_2e"],
-        feil_2f_1 = var_verdi["feil_2f_1"], feil_2f_2 = var_verdi["feil_2f_2"], feil_2f_3 = var_verdi["feil_2f_3"],
-        feil_2g = var_verdi["feil_2g"], fnr_leting = var_verdi["fnr_leting"], t1_antall_id = var_verdi["t1_antall_id"],
-        t11_ant_koblet_fnr = var_verdi["t11_ant_koblet_fnr"], t11_ant_feil_a1 = var_verdi["t11_ant_feil_a1"],
-        t11_ant_feil_a2 = var_verdi["t11_ant_feil_a2"], t11_ant_feil_a3 = var_verdi["t11_ant_feil_a3"],
-        t11_ant_feil_a4 = var_verdi["t11_ant_feil_a4"], t11_ant_feil_a5 = var_verdi["t11_ant_feil_a5"],
-        t11_ant_feil_a6 = var_verdi["t11_ant_feil_a6"], t11_ant_feil_b1 = var_verdi["t11_ant_feil_b1"],
-        t11_ant_feil_b2 = var_verdi["t11_ant_feil_b2"], t11_ant_feil_b3 = var_verdi["t11_ant_feil_b3"],
-        t11_ant_feil_b4 = var_verdi["t11_ant_feil_b4"], t11_ant_feil_b5 = var_verdi["t11_ant_feil_b5"],
-        t11_ant_feil_b6 = var_verdi["t11_ant_feil_b6"], t11_ant_feil_c1 = var_verdi["t11_ant_feil_c1"],
-        t11_ant_feil_c2 = var_verdi["t11_ant_feil_c2"], t11_ant_feil_andre = var_verdi["t11_ant_feil_andre"],
-        t11_ant_ikke_kobl = var_verdi["t11_ant_ikke_kobl"], t12_antall_id = var_verdi["t12_antall_id"],
-        t12_ant_koblet_dnr = var_verdi["t12_ant_koblet_dnr"], t12_ant_feil_a1 = var_verdi["t12_ant_feil_a1"],
-        t12_ant_feil_a2 = var_verdi["t12_ant_feil_a2"], t12_ant_feil_a3 = var_verdi["t12_ant_feil_a3"],
-        t12_ant_feil_a4 = var_verdi["t12_ant_feil_a4"], t12_ant_feil_a5 = var_verdi["t12_ant_feil_a5"],
-        t12_ant_feil_a6 = var_verdi["t12_ant_feil_a6"], t12_ant_feil_b1 = var_verdi["t12_ant_feil_b1"],
-        t12_ant_feil_b2 = var_verdi["t12_ant_feil_b2"], t12_ant_feil_b3 = var_verdi["t12_ant_feil_b3"],
-        t12_ant_feil_b4 = var_verdi["t12_ant_feil_b4"], t12_ant_feil_b5 = var_verdi["t12_ant_feil_b5"],
-        t12_ant_feil_b6 = var_verdi["t12_ant_feil_b6"], t12_ant_feil_c1 = var_verdi["t12_ant_feil_c1"],
-        t12_ant_feil_c2 = var_verdi["t12_ant_feil_c2"], t12_ant_feil_andre = var_verdi["t12_ant_feil_andre"],
-        t12_ant_ikke_kobl = var_verdi["t12_ant_ikke_kobl"], t13_ant_paa_fil = var_verdi["t13_ant_paa_fil"],
-        t13_ant_fnr_koblet = var_verdi["t13_ant_fnr_koblet"], t13_ant_dnr_koblet = var_verdi["t13_ant_dnr_koblet"],
-        t13_ant_koblet_fnr_lik = var_verdi["t13_ant_koblet_fnr_lik"], t13_ant_koblet_fnr_ulik = var_verdi["t13_ant_koblet_fnr_ulik"],
-        t13_ant_koblet_dnr_lik = var_verdi["t13_ant_koblet_dnr_lik"], t13_ant_koblet_dnr_ulik = var_verdi["t13_ant_koblet_dnr_ulik"],
-        t1_ant_koblet = var_verdi["t1_ant_koblet"], t1_ant_ikke_koblet = var_verdi["t1_ant_ikke_koblet"],
-        t2_antall_id = var_verdi["t2_antall_id"], t21_ant_koblet_fnr = var_verdi["t21_ant_koblet_fnr"],
-        t21_ant_feil_a1 = var_verdi["t21_ant_feil_a1"], t21_ant_feil_a2 = var_verdi["t21_ant_feil_a2"],
-        t21_ant_feil_a3 = var_verdi["t21_ant_feil_a3"], t21_ant_feil_a4 = var_verdi["t21_ant_feil_a4"],
-        t21_ant_feil_a5 = var_verdi["t21_ant_feil_a5"], t21_ant_feil_a6 = var_verdi["t21_ant_feil_a6"],
-        t21_ant_feil_b1 = var_verdi["t21_ant_feil_b1"], t21_ant_feil_b2 = var_verdi["t21_ant_feil_b2"],
-        t21_ant_feil_b3 = var_verdi["t21_ant_feil_b3"], t21_ant_feil_b4 = var_verdi["t21_ant_feil_b4"],
-        t21_ant_feil_b5 = var_verdi["t21_ant_feil_b5"], t21_ant_feil_b6 = var_verdi["t21_ant_feil_b6"],
-        t21_ant_feil_c1 = var_verdi["t21_ant_feil_c1"], t21_ant_feil_c2 = var_verdi["t21_ant_feil_c2"],
-        t21_ant_feil_andre = var_verdi["t21_ant_feil_andre"], t21_ant_ikke_kobl = var_verdi["t21_ant_ikke_kobl"],
-        t22_antall_id = var_verdi["t22_antall_id"], t22_ant_koblet_dnr = var_verdi["t22_ant_koblet_dnr"],
-        t22_ant_feil_a1 = var_verdi["t22_ant_feil_a1"], t22_ant_feil_a2 = var_verdi["t22_ant_feil_a2"],
-        t22_ant_feil_a3 = var_verdi["t22_ant_feil_a3"], t22_ant_feil_a4 = var_verdi["t22_ant_feil_a4"],
-        t22_ant_feil_a5 = var_verdi["t22_ant_feil_a5"], t22_ant_feil_a6 = var_verdi["t22_ant_feil_a6"],
-        t22_ant_feil_b1 = var_verdi["t22_ant_feil_b1"], t22_ant_feil_b2 = var_verdi["t22_ant_feil_b2"],
-        t22_ant_feil_b3 = var_verdi["t22_ant_feil_b3"], t22_ant_feil_b4 = var_verdi["t22_ant_feil_b4"],
-        t22_ant_feil_b5 = var_verdi["t22_ant_feil_b5"], t22_ant_feil_b6 = var_verdi["t22_ant_feil_b6"],
-        t22_ant_feil_c1 = var_verdi["t22_ant_feil_c1"], t22_ant_feil_c2 = var_verdi["t22_ant_feil_c2"],
-        t22_ant_feil_andre = var_verdi["t22_ant_feil_andre"], t22_ant_ikke_kobl = var_verdi["t22_ant_ikke_kobl"],
-        t23_ant_paa_fil = var_verdi["t23_ant_paa_fil"], t23_ant_fnr_koblet = var_verdi["t23_ant_fnr_koblet"],
-        t23_ant_dnr_koblet = var_verdi["t23_ant_dnr_koblet"], t23_ant_koblet_fnr_lik = var_verdi["t23_ant_koblet_fnr_lik"],
-        t23_ant_koblet_fnr_ulik = var_verdi["t23_ant_koblet_fnr_ulik"], t23_ant_koblet_dnr_lik = var_verdi["t23_ant_koblet_dnr_lik"],
-        t23_ant_koblet_dnr_ulik = var_verdi["t23_ant_koblet_dnr_ulik"], t2_ant_koblet = var_verdi["t2_ant_koblet"],
-        t2_ant_ikke_koblet = var_verdi["t2_ant_ikke_koblet"], t2_ant_avvist = var_verdi["t2_ant_avvist"],
-        t3_antall_id = var_verdi["t3_antall_id"], t31_ant_koblet_fnr = var_verdi["t31_ant_koblet_fnr"],
-        t31_ant_feil_a1 = var_verdi["t31_ant_feil_a1"], t31_ant_feil_a2 = var_verdi["t31_ant_feil_a2"],
-        t31_ant_feil_a3 = var_verdi["t31_ant_feil_a3"], t31_ant_feil_a4 = var_verdi["t31_ant_feil_a4"],
-        t31_ant_feil_a5 = var_verdi["t31_ant_feil_a5"], t31_ant_feil_a6 = var_verdi["t31_ant_feil_a6"],
-        t31_ant_feil_b1 = var_verdi["t31_ant_feil_b1"], t31_ant_feil_b2 = var_verdi["t31_ant_feil_b2"],
-        t31_ant_feil_b3 = var_verdi["t31_ant_feil_b3"], t31_ant_feil_b4 = var_verdi["t31_ant_feil_b4"],
-        t31_ant_feil_b5 = var_verdi["t31_ant_feil_b5"], t31_ant_feil_b6 = var_verdi["t31_ant_feil_b6"],
-        t31_ant_feil_c1 = var_verdi["t31_ant_feil_c1"], t31_ant_feil_c2 = var_verdi["t31_ant_feil_c2"],
-        t31_ant_feil_andre = var_verdi["t31_ant_feil_andre"], t31_ant_ikke_kobl = var_verdi["t31_ant_ikke_kobl"],
-        t32_antall_id = var_verdi["t32_antall_id"], t32_ant_koblet_dnr = var_verdi["t32_ant_koblet_dnr"],
-        t32_ant_feil_a1 = var_verdi["t32_ant_feil_a1"], t32_ant_feil_a2 = var_verdi["t32_ant_feil_a2"],
-        t32_ant_feil_a3 = var_verdi["t32_ant_feil_a3"], t32_ant_feil_a4 = var_verdi["t32_ant_feil_a4"],
-        t32_ant_feil_a5 = var_verdi["t32_ant_feil_a5"], t32_ant_feil_a6 = var_verdi["t32_ant_feil_a6"],
-        t32_ant_feil_b1 = var_verdi["t32_ant_feil_b1"], t32_ant_feil_b2 = var_verdi["t32_ant_feil_b2"],
-        t32_ant_feil_b3 = var_verdi["t32_ant_feil_b3"], t32_ant_feil_b4 = var_verdi["t32_ant_feil_b4"],
-        t32_ant_feil_b5 = var_verdi["t32_ant_feil_b5"],
+    if var_verdi:
+        rapport = Kvalitet(periode = periode, leveranse = leveranse, kort_lev = kort_lev,
+            filnavn = var_verdi['Filsti'] + '1_Raadata/' + var_verdi['filnavn_inn'] + '.' + var_verdi['Filtype'], lenke_rapp = "Test",
+            behandlet_datotid = var_verdi['behandlet_datotid'], antall_obs = var_verdi['antall_obs'],
+            antall_unike_id = var_verdi['antall_unike_id'], antall_gyldige_id = var_verdi['antall_gyldige_id'],
+            antall_gyldige_fnr = var_verdi['antall_gyldige_fnr'], antall_gyldige_dnr = var_verdi['antall_gyldige_dnr'],
+            antall_gyld_fnr_lik = var_verdi['antall_gyld_fnr_lik'], antall_gyld_fnr_ulik = var_verdi['antall_gyld_fnr_ulik'],
+            antall_gyld_dnr_lik = var_verdi['antall_gyld_dnr_lik'], antall_gyld_dnr_ulik = var_verdi['antall_gyld_dnr_ulik'],
+            antall_ugyldige = var_verdi['antall_ugyldige'], feil_1e_1 = var_verdi["feil_1e_1"] ,
+            feil_1e_2 = var_verdi["feil_1e_2"], feil_1f_1 = var_verdi["feil_1f_1"], feil_1f_2 = var_verdi["feil_1f_2"],
+            feil_2a_1 = var_verdi["feil_2a_1"], feil_2a_2 = var_verdi["feil_2a_2"], feil_2a_3 = var_verdi["feil_2a_3"],
+            feil_2a_4 = var_verdi["feil_2a_4"], feil_2a_5 = var_verdi["feil_2a_5"], feil_2a_6 = var_verdi["feil_2a_6"],
+            feil_2b_1 = var_verdi["feil_2b_1"], feil_2b_2 = var_verdi["feil_2b_2"], feil_2b_3 = var_verdi["feil_2b_3"],
+            feil_2b_4 = var_verdi["feil_2b_4"], feil_2b_5 = var_verdi["feil_2b_5"], feil_2b_6 = var_verdi["feil_2b_6"],
+            feil_2c_1 = var_verdi["feil_2c_1"], feil_2c_2 = var_verdi["feil_2c_2"], feil_2d_1 = var_verdi["feil_2d_1"],
+            feil_2d_2 = var_verdi["feil_2d_2"], feil_2d_3 = var_verdi["feil_2d_3"], feil_2e = var_verdi["feil_2e"],
+            feil_2f_1 = var_verdi["feil_2f_1"], feil_2f_2 = var_verdi["feil_2f_2"], feil_2f_3 = var_verdi["feil_2f_3"],
+            feil_2g = var_verdi["feil_2g"], fnr_leting = var_verdi["fnr_leting"], t1_antall_id = var_verdi["t1_antall_id"],
+            t11_ant_koblet_fnr = var_verdi["t11_ant_koblet_fnr"], t11_ant_feil_a1 = var_verdi["t11_ant_feil_a1"],
+            t11_ant_feil_a2 = var_verdi["t11_ant_feil_a2"], t11_ant_feil_a3 = var_verdi["t11_ant_feil_a3"],
+            t11_ant_feil_a4 = var_verdi["t11_ant_feil_a4"], t11_ant_feil_a5 = var_verdi["t11_ant_feil_a5"],
+            t11_ant_feil_a6 = var_verdi["t11_ant_feil_a6"], t11_ant_feil_b1 = var_verdi["t11_ant_feil_b1"],
+            t11_ant_feil_b2 = var_verdi["t11_ant_feil_b2"], t11_ant_feil_b3 = var_verdi["t11_ant_feil_b3"],
+            t11_ant_feil_b4 = var_verdi["t11_ant_feil_b4"], t11_ant_feil_b5 = var_verdi["t11_ant_feil_b5"],
+            t11_ant_feil_b6 = var_verdi["t11_ant_feil_b6"], t11_ant_feil_c1 = var_verdi["t11_ant_feil_c1"],
+            t11_ant_feil_c2 = var_verdi["t11_ant_feil_c2"], t11_ant_feil_andre = var_verdi["t11_ant_feil_andre"],
+            t11_ant_ikke_kobl = var_verdi["t11_ant_ikke_kobl"], t12_antall_id = var_verdi["t12_antall_id"],
+            t12_ant_koblet_dnr = var_verdi["t12_ant_koblet_dnr"], t12_ant_feil_a1 = var_verdi["t12_ant_feil_a1"],
+            t12_ant_feil_a2 = var_verdi["t12_ant_feil_a2"], t12_ant_feil_a3 = var_verdi["t12_ant_feil_a3"],
+            t12_ant_feil_a4 = var_verdi["t12_ant_feil_a4"], t12_ant_feil_a5 = var_verdi["t12_ant_feil_a5"],
+            t12_ant_feil_a6 = var_verdi["t12_ant_feil_a6"], t12_ant_feil_b1 = var_verdi["t12_ant_feil_b1"],
+            t12_ant_feil_b2 = var_verdi["t12_ant_feil_b2"], t12_ant_feil_b3 = var_verdi["t12_ant_feil_b3"],
+            t12_ant_feil_b4 = var_verdi["t12_ant_feil_b4"], t12_ant_feil_b5 = var_verdi["t12_ant_feil_b5"],
+            t12_ant_feil_b6 = var_verdi["t12_ant_feil_b6"], t12_ant_feil_c1 = var_verdi["t12_ant_feil_c1"],
+            t12_ant_feil_c2 = var_verdi["t12_ant_feil_c2"], t12_ant_feil_andre = var_verdi["t12_ant_feil_andre"],
+            t12_ant_ikke_kobl = var_verdi["t12_ant_ikke_kobl"], t13_ant_paa_fil = var_verdi["t13_ant_paa_fil"],
+            t13_ant_fnr_koblet = var_verdi["t13_ant_fnr_koblet"], t13_ant_dnr_koblet = var_verdi["t13_ant_dnr_koblet"],
+            t13_ant_koblet_fnr_lik = var_verdi["t13_ant_koblet_fnr_lik"], t13_ant_koblet_fnr_ulik = var_verdi["t13_ant_koblet_fnr_ulik"],
+            t13_ant_koblet_dnr_lik = var_verdi["t13_ant_koblet_dnr_lik"], t13_ant_koblet_dnr_ulik = var_verdi["t13_ant_koblet_dnr_ulik"],
+            t1_ant_koblet = var_verdi["t1_ant_koblet"], t1_ant_ikke_koblet = var_verdi["t1_ant_ikke_koblet"],
+            t2_antall_id = var_verdi["t2_antall_id"], t21_ant_koblet_fnr = var_verdi["t21_ant_koblet_fnr"],
+            t21_ant_feil_a1 = var_verdi["t21_ant_feil_a1"], t21_ant_feil_a2 = var_verdi["t21_ant_feil_a2"],
+            t21_ant_feil_a3 = var_verdi["t21_ant_feil_a3"], t21_ant_feil_a4 = var_verdi["t21_ant_feil_a4"],
+            t21_ant_feil_a5 = var_verdi["t21_ant_feil_a5"], t21_ant_feil_a6 = var_verdi["t21_ant_feil_a6"],
+            t21_ant_feil_b1 = var_verdi["t21_ant_feil_b1"], t21_ant_feil_b2 = var_verdi["t21_ant_feil_b2"],
+            t21_ant_feil_b3 = var_verdi["t21_ant_feil_b3"], t21_ant_feil_b4 = var_verdi["t21_ant_feil_b4"],
+            t21_ant_feil_b5 = var_verdi["t21_ant_feil_b5"], t21_ant_feil_b6 = var_verdi["t21_ant_feil_b6"],
+            t21_ant_feil_c1 = var_verdi["t21_ant_feil_c1"], t21_ant_feil_c2 = var_verdi["t21_ant_feil_c2"],
+            t21_ant_feil_andre = var_verdi["t21_ant_feil_andre"], t21_ant_ikke_kobl = var_verdi["t21_ant_ikke_kobl"],
+            t22_antall_id = var_verdi["t22_antall_id"], t22_ant_koblet_dnr = var_verdi["t22_ant_koblet_dnr"],
+            t22_ant_feil_a1 = var_verdi["t22_ant_feil_a1"], t22_ant_feil_a2 = var_verdi["t22_ant_feil_a2"],
+            t22_ant_feil_a3 = var_verdi["t22_ant_feil_a3"], t22_ant_feil_a4 = var_verdi["t22_ant_feil_a4"],
+            t22_ant_feil_a5 = var_verdi["t22_ant_feil_a5"], t22_ant_feil_a6 = var_verdi["t22_ant_feil_a6"],
+            t22_ant_feil_b1 = var_verdi["t22_ant_feil_b1"], t22_ant_feil_b2 = var_verdi["t22_ant_feil_b2"],
+            t22_ant_feil_b3 = var_verdi["t22_ant_feil_b3"], t22_ant_feil_b4 = var_verdi["t22_ant_feil_b4"],
+            t22_ant_feil_b5 = var_verdi["t22_ant_feil_b5"], t22_ant_feil_b6 = var_verdi["t22_ant_feil_b6"],
+            t22_ant_feil_c1 = var_verdi["t22_ant_feil_c1"], t22_ant_feil_c2 = var_verdi["t22_ant_feil_c2"],
+            t22_ant_feil_andre = var_verdi["t22_ant_feil_andre"], t22_ant_ikke_kobl = var_verdi["t22_ant_ikke_kobl"],
+            t23_ant_paa_fil = var_verdi["t23_ant_paa_fil"], t23_ant_fnr_koblet = var_verdi["t23_ant_fnr_koblet"],
+            t23_ant_dnr_koblet = var_verdi["t23_ant_dnr_koblet"], t23_ant_koblet_fnr_lik = var_verdi["t23_ant_koblet_fnr_lik"],
+            t23_ant_koblet_fnr_ulik = var_verdi["t23_ant_koblet_fnr_ulik"], t23_ant_koblet_dnr_lik = var_verdi["t23_ant_koblet_dnr_lik"],
+            t23_ant_koblet_dnr_ulik = var_verdi["t23_ant_koblet_dnr_ulik"], t2_ant_koblet = var_verdi["t2_ant_koblet"],
+            t2_ant_ikke_koblet = var_verdi["t2_ant_ikke_koblet"], t2_ant_avvist = var_verdi["t2_ant_avvist"],
+            t3_antall_id = var_verdi["t3_antall_id"], t31_ant_koblet_fnr = var_verdi["t31_ant_koblet_fnr"],
+            t31_ant_feil_a1 = var_verdi["t31_ant_feil_a1"], t31_ant_feil_a2 = var_verdi["t31_ant_feil_a2"],
+            t31_ant_feil_a3 = var_verdi["t31_ant_feil_a3"], t31_ant_feil_a4 = var_verdi["t31_ant_feil_a4"],
+            t31_ant_feil_a5 = var_verdi["t31_ant_feil_a5"], t31_ant_feil_a6 = var_verdi["t31_ant_feil_a6"],
+            t31_ant_feil_b1 = var_verdi["t31_ant_feil_b1"], t31_ant_feil_b2 = var_verdi["t31_ant_feil_b2"],
+            t31_ant_feil_b3 = var_verdi["t31_ant_feil_b3"], t31_ant_feil_b4 = var_verdi["t31_ant_feil_b4"],
+            t31_ant_feil_b5 = var_verdi["t31_ant_feil_b5"], t31_ant_feil_b6 = var_verdi["t31_ant_feil_b6"],
+            t31_ant_feil_c1 = var_verdi["t31_ant_feil_c1"], t31_ant_feil_c2 = var_verdi["t31_ant_feil_c2"],
+            t31_ant_feil_andre = var_verdi["t31_ant_feil_andre"], t31_ant_ikke_kobl = var_verdi["t31_ant_ikke_kobl"],
+            t32_antall_id = var_verdi["t32_antall_id"], t32_ant_koblet_dnr = var_verdi["t32_ant_koblet_dnr"],
+            t32_ant_feil_a1 = var_verdi["t32_ant_feil_a1"], t32_ant_feil_a2 = var_verdi["t32_ant_feil_a2"],
+            t32_ant_feil_a3 = var_verdi["t32_ant_feil_a3"], t32_ant_feil_a4 = var_verdi["t32_ant_feil_a4"],
+            t32_ant_feil_a5 = var_verdi["t32_ant_feil_a5"], t32_ant_feil_a6 = var_verdi["t32_ant_feil_a6"],
+            t32_ant_feil_b1 = var_verdi["t32_ant_feil_b1"], t32_ant_feil_b2 = var_verdi["t32_ant_feil_b2"],
+            t32_ant_feil_b3 = var_verdi["t32_ant_feil_b3"], t32_ant_feil_b4 = var_verdi["t32_ant_feil_b4"],
+            t32_ant_feil_b5 = var_verdi["t32_ant_feil_b5"],
                        t32_ant_feil_b6 = var_verdi['t32_ant_feil_b6'],
-        t32_ant_feil_c1 = var_verdi["t32_ant_feil_c1"], t32_ant_feil_c2 = var_verdi["t32_ant_feil_c2"],
-        t32_ant_feil_andre = var_verdi["t32_ant_feil_andre"], t32_ant_ikke_kobl = var_verdi["t32_ant_ikke_kobl"],
-        t33_ant_paa_fil = var_verdi["t33_ant_paa_fil"], t33_ant_fnr_koblet = var_verdi["t33_ant_fnr_koblet"],
-        t33_ant_dnr_koblet = var_verdi["t33_ant_dnr_koblet"], t33_ant_koblet_fnr_lik = var_verdi["t33_ant_koblet_fnr_lik"],
-        t33_ant_koblet_fnr_ulik = var_verdi["t33_ant_koblet_fnr_ulik"], t33_ant_koblet_dnr_lik = var_verdi["t33_ant_koblet_dnr_lik"],
-        t33_ant_koblet_dnr_ulik = var_verdi["t33_ant_koblet_dnr_ulik"], t3_ant_koblet = var_verdi["t3_ant_koblet"],
-        t3_ant_ikke_koblet = var_verdi["t3_ant_ikke_koblet"], t4_antall_id = var_verdi["t4_antall_id"],
-        t41_ant_koblet = var_verdi["t41_ant_koblet"], t41_ant_feil_a1 = var_verdi["t41_ant_feil_a1"],
-        t41_ant_feil_a2 = var_verdi["t41_ant_feil_a2"], t41_ant_feil_a3 = var_verdi["t41_ant_feil_a3"],
-        t41_ant_feil_a4 = var_verdi["t41_ant_feil_a4"], t41_ant_feil_a5 = var_verdi["t41_ant_feil_a5"],
-        t41_ant_feil_a6 = var_verdi["t41_ant_feil_a6"], t41_ant_feil_b1 = var_verdi["t41_ant_feil_b1"],
-        t41_ant_feil_b2 = var_verdi["t41_ant_feil_b2"], t41_ant_feil_b3 = var_verdi["t41_ant_feil_b3"],
-        t41_ant_feil_b4 = var_verdi["t41_ant_feil_b4"], t41_ant_feil_b5 = var_verdi["t41_ant_feil_b5"],
-        t41_ant_feil_b6 = var_verdi["t41_ant_feil_b6"], t41_ant_feil_c1 = var_verdi["t41_ant_feil_c1"],
-        t41_ant_feil_c2 = var_verdi["t41_ant_feil_c2"], t41_ant_feil_e = var_verdi["t41_ant_feil_e"],
-        t41_ant_feil_f1 = var_verdi["t41_ant_feil_f1"], t41_ant_feil_f2 = var_verdi["t41_ant_feil_f2"],
-        t41_ant_feil_f3 = var_verdi["t41_ant_feil_f3"], t41_ant_feil_andre = var_verdi["t41_ant_feil_andre"],
-        t41_ant_ikke_kobl = var_verdi["t41_ant_ikke_kobl"], t43_ant_paa_fil = var_verdi["t43_ant_paa_fil"],
-        t43_ant_fnr_koblet = var_verdi["t43_ant_fnr_koblet"], t43_ant_dnr_koblet = var_verdi["t43_ant_dnr_koblet"],
-        t43_ant_koblet_fnr_lik = var_verdi["t43_ant_koblet_fnr_lik"], t43_ant_koblet_fnr_ulik = var_verdi["t43_ant_koblet_fnr_ulik"],
-        t43_ant_koblet_dnr_lik = var_verdi["t43_ant_koblet_dnr_lik"], t43_ant_koblet_dnr_ulik = var_verdi["t43_ant_koblet_dnr_ulik"],
-        t4_ant_koblet = var_verdi["t4_ant_koblet"], t4_ant_ikke_koblet = var_verdi["t4_ant_ikke_koblet"],
-        t5_antall_id = var_verdi["t5_antall_id"], t51_ant_koblet = var_verdi["t51_ant_koblet"],
-        t51_ant_feil_a1 = var_verdi["t51_ant_feil_a1"], t51_ant_feil_a2 = var_verdi["t51_ant_feil_a2"],
-        t51_ant_feil_a3 = var_verdi["t51_ant_feil_a3"], t51_ant_feil_a4 = var_verdi["t51_ant_feil_a4"],
-        t51_ant_feil_a5 = var_verdi["t51_ant_feil_a5"], t51_ant_feil_a6 = var_verdi["t51_ant_feil_a6"],
-        t51_ant_feil_b1 = var_verdi["t51_ant_feil_b1"], t51_ant_feil_b2 = var_verdi["t51_ant_feil_b2"],
-        t51_ant_feil_b3 = var_verdi["t51_ant_feil_b3"], t51_ant_feil_b4 = var_verdi["t51_ant_feil_b4"],
-        t51_ant_feil_b5 = var_verdi["t51_ant_feil_b5"], t51_ant_feil_b6 = var_verdi["t51_ant_feil_b6"],
-        t51_ant_feil_c1 = var_verdi["t51_ant_feil_c1"], t51_ant_feil_c2 = var_verdi["t51_ant_feil_c2"],
-        t51_ant_feil_e = var_verdi["t51_ant_feil_e"], t51_ant_feil_f1 = var_verdi["t51_ant_feil_f1"],
-        t51_ant_feil_f2 = var_verdi["t51_ant_feil_f2"], t51_ant_feil_f3 = var_verdi["t51_ant_feil_f3"],
-        t51_ant_feil_andre = var_verdi["t51_ant_feil_andre"], t51_ant_ikke_kobl = var_verdi["t51_ant_ikke_kobl"],
-        t53_ant_paa_fil = var_verdi["t53_ant_paa_fil"], t53_ant_fnr_koblet = var_verdi["t53_ant_fnr_koblet"],
-        t53_ant_dnr_koblet = var_verdi["t53_ant_dnr_koblet"], t53_ant_koblet_fnr_lik = var_verdi["t53_ant_koblet_fnr_lik"],
-        t53_ant_koblet_fnr_ulik = var_verdi["t53_ant_koblet_fnr_ulik"], t53_ant_koblet_dnr_lik = var_verdi["t53_ant_koblet_dnr_lik"],
-        t53_ant_koblet_dnr_ulik = var_verdi["t53_ant_koblet_dnr_ulik"], t5_ant_koblet = var_verdi["t5_ant_koblet"],
-        t5_ant_ikke_koblet = var_verdi["t5_ant_ikke_koblet"])
+            t32_ant_feil_c1 = var_verdi["t32_ant_feil_c1"], t32_ant_feil_c2 = var_verdi["t32_ant_feil_c2"],
+            t32_ant_feil_andre = var_verdi["t32_ant_feil_andre"], t32_ant_ikke_kobl = var_verdi["t32_ant_ikke_kobl"],
+            t33_ant_paa_fil = var_verdi["t33_ant_paa_fil"], t33_ant_fnr_koblet = var_verdi["t33_ant_fnr_koblet"],
+            t33_ant_dnr_koblet = var_verdi["t33_ant_dnr_koblet"], t33_ant_koblet_fnr_lik = var_verdi["t33_ant_koblet_fnr_lik"],
+            t33_ant_koblet_fnr_ulik = var_verdi["t33_ant_koblet_fnr_ulik"], t33_ant_koblet_dnr_lik = var_verdi["t33_ant_koblet_dnr_lik"],
+            t33_ant_koblet_dnr_ulik = var_verdi["t33_ant_koblet_dnr_ulik"], t3_ant_koblet = var_verdi["t3_ant_koblet"],
+            t3_ant_ikke_koblet = var_verdi["t3_ant_ikke_koblet"], t4_antall_id = var_verdi["t4_antall_id"],
+            t41_ant_koblet = var_verdi["t41_ant_koblet"], t41_ant_feil_a1 = var_verdi["t41_ant_feil_a1"],
+            t41_ant_feil_a2 = var_verdi["t41_ant_feil_a2"], t41_ant_feil_a3 = var_verdi["t41_ant_feil_a3"],
+            t41_ant_feil_a4 = var_verdi["t41_ant_feil_a4"], t41_ant_feil_a5 = var_verdi["t41_ant_feil_a5"],
+            t41_ant_feil_a6 = var_verdi["t41_ant_feil_a6"], t41_ant_feil_b1 = var_verdi["t41_ant_feil_b1"],
+            t41_ant_feil_b2 = var_verdi["t41_ant_feil_b2"], t41_ant_feil_b3 = var_verdi["t41_ant_feil_b3"],
+            t41_ant_feil_b4 = var_verdi["t41_ant_feil_b4"], t41_ant_feil_b5 = var_verdi["t41_ant_feil_b5"],
+            t41_ant_feil_b6 = var_verdi["t41_ant_feil_b6"], t41_ant_feil_c1 = var_verdi["t41_ant_feil_c1"],
+            t41_ant_feil_c2 = var_verdi["t41_ant_feil_c2"], t41_ant_feil_e = var_verdi["t41_ant_feil_e"],
+            t41_ant_feil_f1 = var_verdi["t41_ant_feil_f1"], t41_ant_feil_f2 = var_verdi["t41_ant_feil_f2"],
+            t41_ant_feil_f3 = var_verdi["t41_ant_feil_f3"], t41_ant_feil_andre = var_verdi["t41_ant_feil_andre"],
+            t41_ant_ikke_kobl = var_verdi["t41_ant_ikke_kobl"], t43_ant_paa_fil = var_verdi["t43_ant_paa_fil"],
+            t43_ant_fnr_koblet = var_verdi["t43_ant_fnr_koblet"], t43_ant_dnr_koblet = var_verdi["t43_ant_dnr_koblet"],
+            t43_ant_koblet_fnr_lik = var_verdi["t43_ant_koblet_fnr_lik"], t43_ant_koblet_fnr_ulik = var_verdi["t43_ant_koblet_fnr_ulik"],
+            t43_ant_koblet_dnr_lik = var_verdi["t43_ant_koblet_dnr_lik"], t43_ant_koblet_dnr_ulik = var_verdi["t43_ant_koblet_dnr_ulik"],
+            t4_ant_koblet = var_verdi["t4_ant_koblet"], t4_ant_ikke_koblet = var_verdi["t4_ant_ikke_koblet"],
+            t5_antall_id = var_verdi["t5_antall_id"], t51_ant_koblet = var_verdi["t51_ant_koblet"],
+            t51_ant_feil_a1 = var_verdi["t51_ant_feil_a1"], t51_ant_feil_a2 = var_verdi["t51_ant_feil_a2"],
+            t51_ant_feil_a3 = var_verdi["t51_ant_feil_a3"], t51_ant_feil_a4 = var_verdi["t51_ant_feil_a4"],
+            t51_ant_feil_a5 = var_verdi["t51_ant_feil_a5"], t51_ant_feil_a6 = var_verdi["t51_ant_feil_a6"],
+            t51_ant_feil_b1 = var_verdi["t51_ant_feil_b1"], t51_ant_feil_b2 = var_verdi["t51_ant_feil_b2"],
+            t51_ant_feil_b3 = var_verdi["t51_ant_feil_b3"], t51_ant_feil_b4 = var_verdi["t51_ant_feil_b4"],
+            t51_ant_feil_b5 = var_verdi["t51_ant_feil_b5"], t51_ant_feil_b6 = var_verdi["t51_ant_feil_b6"],
+            t51_ant_feil_c1 = var_verdi["t51_ant_feil_c1"], t51_ant_feil_c2 = var_verdi["t51_ant_feil_c2"],
+            t51_ant_feil_e = var_verdi["t51_ant_feil_e"], t51_ant_feil_f1 = var_verdi["t51_ant_feil_f1"],
+            t51_ant_feil_f2 = var_verdi["t51_ant_feil_f2"], t51_ant_feil_f3 = var_verdi["t51_ant_feil_f3"],
+            t51_ant_feil_andre = var_verdi["t51_ant_feil_andre"], t51_ant_ikke_kobl = var_verdi["t51_ant_ikke_kobl"],
+            t53_ant_paa_fil = var_verdi["t53_ant_paa_fil"], t53_ant_fnr_koblet = var_verdi["t53_ant_fnr_koblet"],
+            t53_ant_dnr_koblet = var_verdi["t53_ant_dnr_koblet"], t53_ant_koblet_fnr_lik = var_verdi["t53_ant_koblet_fnr_lik"],
+            t53_ant_koblet_fnr_ulik = var_verdi["t53_ant_koblet_fnr_ulik"], t53_ant_koblet_dnr_lik = var_verdi["t53_ant_koblet_dnr_lik"],
+            t53_ant_koblet_dnr_ulik = var_verdi["t53_ant_koblet_dnr_ulik"], t5_ant_koblet = var_verdi["t5_ant_koblet"],
+            t5_ant_ikke_koblet = var_verdi["t5_ant_ikke_koblet"])
 
-    db.session.add(rapport)
-    db.session.commit()
+        db.session.add(rapport)
+        db.session.commit()
 
-    flash(f'Rapport laget for: {loggfil} !',
-          'info')
-    #flash(f'Kvalitetsrapport opprettet for {rapport.__repr__()} !',
-    #      'success')
-    #flash(f'Kvalitetsrapport opprettet for {var_verdi["filnavn_inn"] + "." + var_verdi["Filtype"]} !',
-     #     'success')
+        flash(f'Rapport laget for: {loggfil} !',
+              'info')
+
+        # Tester pseudonymisering
+        opprinnelig_navn = filnavn.rsplit('/', 1)[1].rsplit('.', 1)[0]
+        fnvn = filnavn.replace("1_Raadata", "3_Kontrollert")
+        kontrollert = fnvn.replace(opprinnelig_navn, bruk_navn)
+        klart = kontrollert.replace("3_Kontrollert", "5_Klart")
+
+        current_app.pseudoService.add('/' + kontrollert, '/' + klart,
+                                            list(pseudo_vars.split(" ")), 'sas')
+
+        return redirect(url_for('main.pseudo'))
+        # Slutt pseudonymisering
 
     return render_template('kvalitetsrapport.html',  title='Kvalitetsrapport', legend='kvalitetsrapport')#logg=rapport,
 
 
-@fil.route('/kvalitetsrapport_utenFnrLeting/<string:number>/<string:kort_lev>/<string:leveranse>/<string:periode>',
+@fil.route('/kvalitetsrapport_utenFnrLeting/<string:number>/<string:kort_lev>/<string:leveranse>/'
+           '<string:periode>/<string:pseudo_vars>/<path:filnavn>/<string:bruk_navn>',
            methods=['POST', 'GET'])
-def kvalitetsrapport_utenFnrLeting(number, kort_lev, leveranse, periode):#leveranse
+def kvalitetsrapport_utenFnrLeting(number, kort_lev, leveranse, periode, pseudo_vars, filnavn, bruk_navn):
     loggfil = '/ssb/stamme01/papis/wk12/loggfil_'+number+'.sas7bdat'
 
     while not os.path.exists(loggfil):
@@ -520,7 +496,8 @@ def kvalitetsrapport_utenFnrLeting(number, kort_lev, leveranse, periode):#levera
         try:
             df = pd.read_sas(loggfil, format='sas7bdat', index=None,
                          encoding='unicode_escape', iterator=False)
-
+            flash(f'Rapport laget for: {loggfil} !',
+                  'info')
         except OSError:
             flash(f'Får ikke lest: {loggfil} !',
                   'warning')
@@ -528,40 +505,53 @@ def kvalitetsrapport_utenFnrLeting(number, kort_lev, leveranse, periode):#levera
         flash(f'Ikke en gyldig fil: {loggfil} !',
               'warning')
 
-    #df = pd.read_sas('/ssb/stamme01/papis/wk12/loggfil_9999.sas7bdat', encoding='latin1')
+    var_verdi = variabel_verdi_dict(df, loggfil)
+
+    if var_verdi:
+        rapport = Kvalitet(periode=periode, leveranse=leveranse, kort_lev=kort_lev,
+                       filnavn=var_verdi['Filsti'] + '1_Raadata/' + var_verdi['filnavn_inn'] + '.' + var_verdi[
+                           'Filtype'], lenke_rapp="Test",
+                       behandlet_datotid=var_verdi['behandlet_datotid'], antall_obs=var_verdi['antall_obs'],
+                       antall_unike_id=var_verdi['antall_unike_id'],
+                       antall_gyldige_id=var_verdi['antall_gyldige_id'],
+                       antall_gyldige_fnr=var_verdi['antall_gyldige_fnr'],
+                       antall_gyldige_dnr=var_verdi['antall_gyldige_dnr'],
+                       antall_gyld_fnr_lik=var_verdi['antall_gyld_fnr_lik'],
+                       antall_gyld_fnr_ulik=var_verdi['antall_gyld_fnr_ulik'],
+                       antall_gyld_dnr_lik=var_verdi['antall_gyld_dnr_lik'],
+                       antall_gyld_dnr_ulik=var_verdi['antall_gyld_dnr_ulik'],
+                       antall_ugyldige=var_verdi['antall_ugyldige'], feil_1e_1=var_verdi["feil_1e_1"],
+                       feil_1e_2=var_verdi["feil_1e_2"], feil_1f_1=var_verdi["feil_1f_1"],
+                       feil_1f_2=var_verdi["feil_1f_2"],
+                       feil_2a_1=var_verdi["feil_2a_1"], feil_2a_2=var_verdi["feil_2a_2"],
+                       feil_2a_3=var_verdi["feil_2a_3"],
+                       feil_2a_4=var_verdi["feil_2a_4"], feil_2a_5=var_verdi["feil_2a_5"],
+                       feil_2a_6=var_verdi["feil_2a_6"],
+                       feil_2b_1=var_verdi["feil_2b_1"], feil_2b_2=var_verdi["feil_2b_2"],
+                       feil_2b_3=var_verdi["feil_2b_3"],
+                       feil_2b_4=var_verdi["feil_2b_4"], feil_2b_5=var_verdi["feil_2b_5"],
+                       feil_2b_6=var_verdi["feil_2b_6"],
+                       feil_2c_1=var_verdi["feil_2c_1"], feil_2c_2=var_verdi["feil_2c_2"],
+                       feil_2d_1=var_verdi["feil_2d_1"],
+                       feil_2d_2=var_verdi["feil_2d_2"], feil_2d_3=var_verdi["feil_2d_3"],
+                       feil_2e=var_verdi["feil_2e"],
+                       feil_2f_1=var_verdi["feil_2f_1"], feil_2f_2=var_verdi["feil_2f_2"],
+                       feil_2f_3=var_verdi["feil_2f_3"],
+                       feil_2g=var_verdi["feil_2g"], fnr_leting=var_verdi["fnr_leting"])
+
+        db.session.add(rapport)
+        db.session.commit()
+
+        # Tester pseudonymisering
+        opprinnelig_navn = filnavn.rsplit('/', 1)[1].rsplit('.', 1)[0]
+        fnvn = filnavn.replace("1_Raadata", "3_Kontrollert")
+        kontrollert = fnvn.replace(opprinnelig_navn, bruk_navn)
+        klart = kontrollert.replace("3_Kontrollert", "5_Klart")
+
+        current_app.pseudoService.add('/' + kontrollert, '/' + klart,
+                                            list(pseudo_vars.split(" ")), 'sas')
+        return redirect(url_for('main.pseudo'))
 
 
-    df.loc[df['verdi'].str.strip() == '.', 'verdi'] = None
-    variabler = df['variabel'].tolist()
-    verdi = df['verdi'].tolist()
-    var_verdi = dict(zip(variabler, verdi))
-
-    rapport = Kvalitet(periode = periode, leveranse = leveranse, kort_lev = kort_lev,
-        filnavn = var_verdi['Filsti'] + '1_Raadata/' + var_verdi['filnavn_inn'] + '.' + var_verdi['Filtype'], lenke_rapp = "Test",
-        behandlet_datotid = var_verdi['behandlet_datotid'], antall_obs = var_verdi['antall_obs'],
-        antall_unike_id = var_verdi['antall_unike_id'], antall_gyldige_id = var_verdi['antall_gyldige_id'],
-        antall_gyldige_fnr = var_verdi['antall_gyldige_fnr'], antall_gyldige_dnr = var_verdi['antall_gyldige_dnr'],
-        antall_gyld_fnr_lik = var_verdi['antall_gyld_fnr_lik'], antall_gyld_fnr_ulik = var_verdi['antall_gyld_fnr_ulik'],
-        antall_gyld_dnr_lik = var_verdi['antall_gyld_dnr_lik'], antall_gyld_dnr_ulik = var_verdi['antall_gyld_dnr_ulik'],
-        antall_ugyldige = var_verdi['antall_ugyldige'], feil_1e_1 = var_verdi["feil_1e_1"] ,
-        feil_1e_2 = var_verdi["feil_1e_2"], feil_1f_1 = var_verdi["feil_1f_1"], feil_1f_2 = var_verdi["feil_1f_2"],
-        feil_2a_1 = var_verdi["feil_2a_1"], feil_2a_2 = var_verdi["feil_2a_2"], feil_2a_3 = var_verdi["feil_2a_3"],
-        feil_2a_4 = var_verdi["feil_2a_4"], feil_2a_5 = var_verdi["feil_2a_5"], feil_2a_6 = var_verdi["feil_2a_6"],
-        feil_2b_1 = var_verdi["feil_2b_1"], feil_2b_2 = var_verdi["feil_2b_2"], feil_2b_3 = var_verdi["feil_2b_3"],
-        feil_2b_4 = var_verdi["feil_2b_4"], feil_2b_5 = var_verdi["feil_2b_5"], feil_2b_6 = var_verdi["feil_2b_6"],
-        feil_2c_1 = var_verdi["feil_2c_1"], feil_2c_2 = var_verdi["feil_2c_2"], feil_2d_1 = var_verdi["feil_2d_1"],
-        feil_2d_2 = var_verdi["feil_2d_2"], feil_2d_3 = var_verdi["feil_2d_3"], feil_2e = var_verdi["feil_2e"],
-        feil_2f_1 = var_verdi["feil_2f_1"], feil_2f_2 = var_verdi["feil_2f_2"], feil_2f_3 = var_verdi["feil_2f_3"],
-        feil_2g = var_verdi["feil_2g"], fnr_leting = var_verdi["fnr_leting"])
-
-    db.session.add(rapport)
-    db.session.commit()
-
-    flash(f'Rapport laget for: {loggfil} !',
-          'info')
-    #flash(f'Kvalitetsrapport opprettet for {rapport.__repr__()} !',
-    #      'success')
-    #flash(f'Kvalitetsrapport opprettet for {var_verdi["filnavn_inn"] + "." + var_verdi["Filtype"]} !',
-     #     'success')
 
     return render_template('kvalitetsrapport.html',  title='Kvalitetsrapport', legend='kvalitetsrapport')#logg=rapport,

@@ -1,14 +1,29 @@
 from flask import Blueprint
-from flask import request, redirect, render_template, flash, url_for
+from flask import request, redirect, render_template, flash, url_for, current_app, g
 from flask_mottak.models import Leverandor
 from flask_mottak.leverandorer.forms import SelectLeverandorForm
 from flask_mottak import db
 
 main = Blueprint('main', __name__)
 
+
 @main.route('/')
 def index():
     return render_template('index.html')
+
+@main.route('/pseudo')
+def pseudo():
+    g.header = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Filtype')
+    future = [(x[0], x[1], x[2], x[3]) for x in current_app.pseudoService.worklistFuture]
+    g.toDo = current_app.pseudoService.showList()
+    g.errorHeader = ('Gammelt filnavn', 'Nytt filnavn', 'Pseudo kolonner', 'Error melding')
+    g.error = current_app.pseudoService.error
+    g.done = current_app.pseudoService.done
+    g.tables = [('Future list', g.header, future),
+                ('Done list:', g.header, g.done),
+                ('Error list:', g.errorHeader, g.error)]
+
+    return render_template('pseudo.html')
 
 
 
